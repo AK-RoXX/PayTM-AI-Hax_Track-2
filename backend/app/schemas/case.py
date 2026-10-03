@@ -6,6 +6,13 @@ class FinancialMap(BaseModel):
     possible_coverage: float
     estimated_gap: float
     status: Literal["planning_estimate"] = "planning_estimate"
+    calculation_status: Literal[
+        "sum_insured_ceiling_only",
+        "sum_insured_missing",
+        "bill_amount_missing",
+    ] = "sum_insured_ceiling_only"
+    possible_coverage_basis: str = "sum_insured_ceiling_only"
+    estimated_gap_basis: str = "minimum_gap_before_policy_adjustments"
     disclaimer: str
 
 class MissingRequirement(BaseModel):
