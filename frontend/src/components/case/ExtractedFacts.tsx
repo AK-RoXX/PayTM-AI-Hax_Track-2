@@ -1,3 +1,5 @@
+import React from "react";
+import { CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import type { ExtractedFact } from "@/lib/types";
 
 function renderValue(fact: ExtractedFact): string {
@@ -5,7 +7,7 @@ function renderValue(fact: ExtractedFact): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (value === null || value === undefined) return "Not found";
   if (fact.value_type === "money") {
-    return `INR ${Number(value).toLocaleString("en-IN", {
+    return `₹${Number(value).toLocaleString("en-IN", {
       maximumFractionDigits: 0,
     })}`;
   }
@@ -23,75 +25,95 @@ function statusPill(status: string) {
   if (status === "verified") return "pill pill-green";
   if (status === "conflict") return "pill pill-red";
   if (status === "needs_review") return "pill pill-amber";
-  return "pill pill-cream";
+  return "pill pill-blue";
 }
 
 export function ExtractedFacts({ facts }: { facts: ExtractedFact[] }) {
   if (facts.length === 0) {
-    return (
-      <section className="card">
-        <div className="label" style={{ marginBottom: 10 }}>
-          Facts we read
-        </div>
-        <p className="muted" style={{ margin: 0 }}>
-          Nothing has been read from your documents yet. Every fact below will
-          show the page it came from, so you can check it against your original.
-        </p>
-      </section>
-    );
+    return null;
   }
 
   return (
-    <section className="card">
-      <div className="label" style={{ marginBottom: 4 }}>
-        Facts we read
+    <section className="card" style={{ padding: "26px" }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span className="label" style={{ color: "#0066f5" }}>AI Extraction</span>
+          <span className="pill pill-green">Gemini Verified</span>
+        </div>
+        <h3 className="heading" style={{ fontSize: 20, margin: 0, color: "var(--paytm-navy)" }}>
+          Extracted Case Facts
+        </h3>
+        <p className="muted" style={{ margin: "2px 0 0", fontSize: 13 }}>
+          Verified details extracted directly from hospital bills and policy clauses
+        </p>
       </div>
-      <p className="muted" style={{ margin: "0 0 14px", fontSize: 13 }}>
-        Extracted from your uploads. Check any flagged against your original.
-      </p>
 
-      <div style={{ display: "grid", gap: 10 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         {facts.map((fact) => (
           <article
             key={`${fact.document_id ?? "case"}-${fact.fact_key}`}
             style={{
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-md)",
-              padding: "12px 14px",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "16px 18px",
+              background: "#ffffff",
             }}
           >
-            <div className="row-between" style={{ alignItems: "flex-start" }}>
-              <span className="heading" style={{ fontSize: 14 }}>
-                {fact.label}
-              </span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <span style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>
+                  {fact.label}
+                </span>
+                <div
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "var(--paytm-navy)",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    marginTop: 2,
+                  }}
+                >
+                  {renderValue(fact)}
+                </div>
+              </div>
+
               <span className={statusPill(fact.verification_status)}>
                 {STATUS_LABELS[fact.verification_status] ?? fact.verification_status}
               </span>
             </div>
 
-            <p
+            <div
               style={{
-                margin: "6px 0 0",
-                fontSize: 18,
-                fontWeight: 700,
-                color: "var(--navy)",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontSize: 12,
+                color: "#64748b",
+                marginTop: 8,
               }}
             >
-              {renderValue(fact)}
-            </p>
-
-            <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
-              {fact.document_name || "Uploaded document"}
-              {fact.source_page ? ` · page ${fact.source_page}` : ""} ·{" "}
-              {Math.round(fact.confidence * 100)}% confidence
-            </p>
+              <span>{fact.document_name || "Uploaded document"}</span>
+              {fact.source_page && <span>· Page {fact.source_page}</span>}
+              <span>· {Math.round(fact.confidence * 100)}% confidence</span>
+            </div>
 
             {fact.source_quote && (
               <blockquote
                 className="evidence"
-                style={{ margin: "10px 0 0", fontSize: 13 }}
+                style={{
+                  margin: "10px 0 0",
+                  fontSize: 12.5,
+                  padding: "8px 12px",
+                }}
               >
-                {fact.source_quote}
+                &ldquo;{fact.source_quote}&rdquo;
               </blockquote>
             )}
           </article>

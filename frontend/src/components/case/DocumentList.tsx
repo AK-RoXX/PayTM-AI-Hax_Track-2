@@ -1,5 +1,6 @@
+import React from "react";
 import Link from "next/link";
-import { FileText, RotateCcw } from "lucide-react";
+import { FileText, Image as ImageIcon, Plus, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import type { CaseDocument, ExtractionStatus } from "@/lib/types";
 
 const EXTRACTION_LABELS: Record<ExtractionStatus, string> = {
@@ -26,111 +27,182 @@ function readableDocumentType(type: string) {
   return type.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export function DocumentList({ documents }: { documents: CaseDocument[] }) {
+export function DocumentList({
+  documents,
+  caseId,
+}: {
+  documents: CaseDocument[];
+  caseId?: string;
+}) {
   return (
-    <section className="card">
-      <div className="row-between" style={{ marginBottom: 16 }}>
+    <section className="card" style={{ padding: "26px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 18,
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
         <div>
-          <div className="label">Documents</div>
-          <p className="muted" style={{ margin: "3px 0 0", fontSize: 13 }}>
-            {documents.length} uploaded · processing status and extracted facts
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="label" style={{ color: "#0066f5" }}>Document Vault</span>
+            <span className="pill pill-blue">Encrypted</span>
+          </div>
+          <h3 className="heading" style={{ fontSize: 20, margin: 0, color: "var(--paytm-navy)" }}>
+            Case Documents
+          </h3>
+          <p className="muted" style={{ margin: "2px 0 0", fontSize: 13 }}>
+            {documents.length} document{documents.length === 1 ? "" : "s"} uploaded &amp; processed
           </p>
         </div>
+
         <Link
-          href="/upload"
+          href={caseId ? `/upload?caseId=${encodeURIComponent(caseId)}` : "/upload"}
           className="btn btn-outline btn-sm"
-          aria-label="Upload more documents"
+          style={{ gap: 6 }}
         >
-          <RotateCcw size={14} aria-hidden="true" />
-          Add more
+          <Plus size={15} />
+          Add document
         </Link>
       </div>
 
       {documents.length === 0 ? (
-        <p className="muted" style={{ margin: 0 }}>
-          No documents yet. Upload your policy, hospital bills and discharge
-          summary so we can work out what is still missing.
-        </p>
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: 14,
+            border: "1px dashed #cbd5e1",
+          }}
+        >
+          <FileText size={32} style={{ color: "#94a3b8", margin: "0 auto 10px" }} />
+          <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#1e293b" }}>
+            No documents uploaded yet
+          </h4>
+          <p className="muted" style={{ margin: "0 0 16px", fontSize: 13 }}>
+            Upload your health policy, hospital estimation bill, and admission advice.
+          </p>
+          <Link
+            href={caseId ? `/upload?caseId=${encodeURIComponent(caseId)}` : "/upload"}
+            className="btn btn-primary btn-sm"
+          >
+            Upload your first document
+          </Link>
+        </div>
       ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {documents.map((document) => (
-            <article
-              key={document.id}
-              style={{
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-md)",
-                padding: 14,
-              }}
-            >
-              <div className="row-between" style={{ alignItems: "flex-start" }}>
-                <span className="row" style={{ minWidth: 0, alignItems: "flex-start" }}>
-                  <FileText
-                    size={16}
-                    style={{ color: "var(--muted)", flexShrink: 0, marginTop: 2 }}
-                    aria-hidden="true"
-                  />
-                  <span style={{ minWidth: 0 }}>
-                    <span
-                      className="heading"
+        <div style={{ display: "grid", gap: 12 }}>
+          {documents.map((doc) => {
+            const isPdf = doc.file_name.toLowerCase().endsWith(".pdf");
+
+            return (
+              <article
+                key={doc.id}
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 14,
+                  padding: "16px 18px",
+                  background: "#ffffff",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+                    <div
                       style={{
-                        display: "block",
-                        fontSize: 14,
-                        overflowWrap: "anywhere",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: isPdf ? "#fee2e2" : "#e0f2fe",
+                        color: isPdf ? "#dc2626" : "#0284c7",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
                       }}
                     >
-                      {document.file_name}
-                    </span>
-                    <span
-                      className="muted"
-                      style={{ display: "block", fontSize: 12, marginTop: 2 }}
-                    >
-                      {readableDocumentType(document.document_type)}
-                      {document.page_count ? ` · ${document.page_count} pages` : ""}
-                      {document.processing_provider
-                        ? ` · ${document.processing_provider}`
-                        : ""}
-                    </span>
-                  </span>
-                </span>
-                <span className={extractionPill(document.extraction_status)}>
-                  {EXTRACTION_LABELS[document.extraction_status]}
-                </span>
-              </div>
-
-              {document.error_message && (
-                <p
-                  role="alert"
-                  style={{
-                    margin: "10px 0 0",
-                    fontSize: 13,
-                    color: "var(--red)",
-                  }}
-                >
-                  {document.error_message}
-                </p>
-              )}
-
-              {document.facts.length > 0 && (
-                <dl
-                  style={{
-                    margin: "12px 0 0",
-                    display: "grid",
-                    gap: 6,
-                    fontSize: 13,
-                  }}
-                >
-                  {document.facts.map((fact) => (
-                    <div key={fact.fact_key} className="row-between">
-                      <dt className="muted">{fact.label}</dt>
-                      <dd style={{ margin: 0, fontWeight: 600 }}>
-                        {String(fact.value_json)}
-                      </dd>
+                      {isPdf ? <FileText size={18} /> : <ImageIcon size={18} />}
                     </div>
-                  ))}
-                </dl>
-              )}
-            </article>
-          ))}
+
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 14.5,
+                          color: "#0f172a",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {doc.file_name}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginTop: 3,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span>{readableDocumentType(doc.document_type)}</span>
+                        {doc.page_count && <span>· {doc.page_count} pages</span>}
+                        {doc.facts_count ? (
+                          <span style={{ color: "#059669", fontWeight: 600 }}>
+                            · {doc.facts_count} facts extracted
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className={extractionPill(doc.extraction_status)}>
+                    {EXTRACTION_LABELS[doc.extraction_status]}
+                  </span>
+                </div>
+
+                {doc.facts && doc.facts.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 10,
+                      borderTop: "1px dashed #f1f5f9",
+                      display: "grid",
+                      gap: 6,
+                      fontSize: 12.5,
+                    }}
+                  >
+                    {doc.facts.map((fact) => (
+                      <div
+                        key={fact.fact_key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          color: "#334155",
+                        }}
+                      >
+                        <span style={{ color: "#64748b" }}>{fact.label}</span>
+                        <strong style={{ color: "#0f172a" }}>{String(fact.value_json)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

@@ -2,18 +2,28 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import {
-  Activity,
+  ShieldCheck,
+  Landmark,
+  Wallet,
   ArrowRight,
-  FileText,
-  LogOut,
   Plus,
   Upload,
+  FileCheck,
+  FileText,
+  Activity,
+  PieChart,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppNavbar } from "@/components/layout/AppNavbar";
+import { EcosystemFooter } from "@/components/common/EcosystemFooter";
+import { SahayakRobot } from "@/components/common/SahayakRobot";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Paytm Sahaayak",
-  description: "Your medical claim dashboard",
+  title: "Dashboard — Paytm Sahayak",
+  description: "AI Financial Journey Assistant for health claims, loans, and payments",
 };
 
 function readableStatus(status: string) {
@@ -40,263 +50,531 @@ export default async function DashboardPage() {
     .limit(10);
 
   const claimCases = cases ?? [];
-  const name =
-    user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "there";
-  const uploadHref = claimCases[0]
-    ? `/upload?caseId=${encodeURIComponent(claimCases[0].id)}`
+  const fullName =
+    user.user_metadata?.full_name ||
+    user.email?.split("@")[0] ||
+    "Rahul Sharma";
+
+  const firstName = fullName.split(" ")[0];
+  const latestCaseId = claimCases[0]?.id;
+
+  const uploadHref = latestCaseId
+    ? `/upload?caseId=${encodeURIComponent(latestCaseId)}`
     : "/intake";
-  const actions = [
+
+  const startWithSahayakHref = latestCaseId
+    ? `/case/${encodeURIComponent(latestCaseId)}`
+    : "/intake";
+
+  // The 3 Financial Journey Cards directly from Application UI.png
+  const journeys = [
     {
-      href: "/intake",
-      label: "Create a claim",
-      detail: "Start a new medical claim",
-      Icon: Plus,
+      title: "Insurance Claims",
+      desc: "Track, resolve and get updates on your health insurance claim",
+      href: latestCaseId ? `/case/${latestCaseId}` : "/intake",
+      badge: "Active Assistance",
+      icon: ShieldCheck,
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+      borderColor: "#bae6fd",
     },
     {
-      href: uploadHref,
-      label: "Upload documents",
-      detail: claimCases.length
-        ? "Add documents to your latest claim"
-        : "Create a claim to continue",
-      Icon: Upload,
+      title: "Loans",
+      desc: "Get financial support and gap funding when you need it",
+      href: latestCaseId ? `/case/${latestCaseId}#money-map` : "/dashboard#loans",
+      badge: "Instant Approval",
+      icon: Landmark,
+      iconBg: "#ecfdf5",
+      iconColor: "#059669",
+      borderColor: "#a7f3d0",
     },
     {
-      href: "/track",
-      label: "Track a claim",
-      detail: "View status and follow-ups",
-      Icon: Activity,
+      title: "Payments",
+      desc: "Pay bills, recharge and manage your hospital billing transactions",
+      href: "/dashboard#payments",
+      badge: "Paytm UPI",
+      icon: Wallet,
+      iconBg: "#f5f3ff",
+      iconColor: "#7c3aed",
+      borderColor: "#ddd6fe",
     },
   ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg)",
-        color: "var(--ink)",
-      }}
-    >
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-          background: "rgba(250, 247, 239, 0.94)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid var(--border-subtle)",
-        }}
-      >
-        <div className="container row-between" style={{ minHeight: 68 }}>
-          <Link href="/dashboard" className="row heading" style={{ gap: 10 }}>
-            <span
-              aria-hidden="true"
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
+      {/* Desktop Left Sidebar */}
+      <AppSidebar currentCaseId={latestCaseId} />
+
+      {/* Main Content Area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <AppNavbar userName={fullName} userEmail={user.email} />
+
+        <main style={{ padding: "30px 24px 70px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
+          {/* Greeting */}
+          <div style={{ marginBottom: 20 }}>
+            <h1
+              className="heading"
               style={{
-                display: "grid",
-                placeItems: "center",
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: "var(--amber-pale)",
-                color: "var(--amber)",
+                fontSize: 26,
+                color: "#0f172a",
+                margin: "0 0 4px",
               }}
             >
-              <Activity size={18} />
-            </span>
-            Paytm Sahaayak
-          </Link>
-          <div className="row" style={{ gap: 14 }}>
-            <span className="muted" style={{ fontSize: 13 }}>
-              {user.email}
-            </span>
-            <form action="/auth/signout" method="post">
-              <button type="submit" className="btn btn-ghost btn-sm">
-                <LogOut size={15} aria-hidden="true" />
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </nav>
-
-      <main className="container" style={{ paddingTop: 38, paddingBottom: 72 }}>
-        <header
-          className="row-between"
-          style={{ alignItems: "flex-end", flexWrap: "wrap", marginBottom: 26 }}
-        >
-          <div>
-            <div className="label">Your care, organized</div>
-            <h1 className="heading" style={{ margin: "6px 0", fontSize: 30 }}>
-              Welcome back, {name}
+              Hi {firstName},
             </h1>
-            <p className="muted" style={{ margin: 0 }}>
-              Your claims and next steps, in one place.
+            <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+              Your financial journey, simplified.
             </p>
           </div>
-          <Link href="/intake" className="btn btn-amber">
-            <Plus size={17} aria-hidden="true" />
-            Create claim
-          </Link>
-        </header>
 
-        <section
-          aria-label="Claim actions"
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-            gap: 14,
-            marginBottom: 38,
-          }}
-        >
-          {actions.map(({ href, label, detail, Icon }) => (
-            <Link
-              key={label}
-              href={href}
-              className="card"
+          {/* Desktop Dashboard Hero Banner matching Application UI.png */}
+          <section
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 24,
+              border: "1px solid #bfdbfe",
+              background: "linear-gradient(135deg, #eef6ff 0%, #f0fdf4 100%)",
+              padding: "36px 32px",
+              marginBottom: 32,
+              boxShadow: "0 4px 20px rgba(0, 41, 112, 0.05)",
+            }}
+          >
+            <div
               style={{
                 display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                minHeight: 142,
-                padding: 18,
-                boxShadow: "var(--shadow-sm)",
-                transition:
-                  "transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out)",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 24,
+                position: "relative",
+                zIndex: 2,
               }}
             >
-              <span style={{ color: "var(--amber)" }}>
-                <Icon size={21} aria-hidden="true" />
-              </span>
-              <span>
+              <div style={{ maxWidth: 580 }}>
                 <span
-                  className="heading"
-                  style={{ display: "block", fontSize: 15 }}
-                >
-                  {label}
-                </span>
-                <span
-                  className="muted"
-                  style={{ display: "block", marginTop: 3, fontSize: 13 }}
-                >
-                  {detail}
-                </span>
-              </span>
-            </Link>
-          ))}
-        </section>
-
-        <section>
-          <div
-            className="row-between"
-            style={{ flexWrap: "wrap", marginBottom: 14 }}
-          >
-            <div>
-              <h2 className="heading" style={{ margin: 0, fontSize: 19 }}>
-                Recent claims
-              </h2>
-              <p className="muted" style={{ margin: "3px 0 0", fontSize: 13 }}>
-                {claimCases.length} active{" "}
-                {claimCases.length === 1 ? "claim" : "claims"}
-              </p>
-            </div>
-            <Link href="/intake" className="btn btn-outline btn-sm">
-              New claim <ArrowRight size={15} aria-hidden="true" />
-            </Link>
-          </div>
-
-          {casesError ? (
-            <div className="card" role="alert" style={{ color: "var(--red)" }}>
-              We could not load your claims. Please refresh and try again.
-            </div>
-          ) : claimCases.length === 0 ? (
-            <div
-              className="card"
-              style={{ padding: 28, background: "var(--cream-50)" }}
-            >
-              <FileText
-                size={24}
-                style={{ color: "var(--muted)" }}
-                aria-hidden="true"
-              />
-              <h3
-                className="heading"
-                style={{ margin: "12px 0 4px", fontSize: 17 }}
-              >
-                No claims yet
-              </h3>
-              <p
-                className="muted"
-                style={{ margin: "0 0 16px", maxWidth: 440 }}
-              >
-                Create a claim first, then add your policy and hospital
-                documents.
-              </p>
-              <Link href="/intake" className="btn btn-primary">
-                Start a claim <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            </div>
-          ) : (
-            <div
-              className="card"
-              style={{ padding: "4px 18px", boxShadow: "var(--shadow-sm)" }}
-            >
-              {claimCases.map((claim, index) => (
-                <Link
-                  key={claim.id}
-                  href={`/case/${encodeURIComponent(claim.id)}`}
-                  className="row-between"
                   style={{
-                    minHeight: 76,
-                    padding: "12px 2px",
-                    borderBottom:
-                      index < claimCases.length - 1
-                        ? "1px solid var(--border-subtle)"
-                        : "none",
-                    gap: 14,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#0066f5",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 8,
                   }}
                 >
-                  <span style={{ minWidth: 0 }}>
-                    <span
-                      className="heading"
+                  <Sparkles size={14} /> Paytm Sahayak Assistant
+                </span>
+
+                <h2
+                  className="display"
+                  style={{
+                    fontSize: "clamp(22px, 3.2vw, 30px)",
+                    color: "var(--paytm-navy)",
+                    margin: "0 0 10px",
+                  }}
+                >
+                  Need help with your health insurance claim?
+                </h2>
+
+                <p
+                  style={{
+                    fontSize: 15,
+                    color: "#334155",
+                    lineHeight: 1.6,
+                    margin: "0 0 24px",
+                  }}
+                >
+                  Upload your documents, ask questions, or track your claim — all in one place.
+                </p>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <Link
+                    href={startWithSahayakHref}
+                    className="btn btn-primary"
+                    style={{
+                      padding: "12px 24px",
+                      borderRadius: 14,
+                      fontSize: 14.5,
+                      fontWeight: 600,
+                      gap: 8,
+                    }}
+                  >
+                    Start with Sahayak
+                    <ArrowRight size={16} />
+                  </Link>
+
+                  <Link
+                    href="/intake"
+                    className="btn btn-outline"
+                    style={{
+                      padding: "12px 20px",
+                      borderRadius: 14,
+                      fontSize: 14,
+                      background: "#ffffff",
+                    }}
+                  >
+                    <Plus size={16} /> New Claim
+                  </Link>
+                </div>
+              </div>
+
+              {/* 3D Sahayak Robot Mascot */}
+              <div className="hidden sm:block" style={{ flexShrink: 0 }}>
+                <SahayakRobot size="lg" animated />
+              </div>
+            </div>
+          </section>
+
+          {/* Your Financial Journey Section (From Application UI.png) */}
+          <section style={{ marginBottom: 36 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <h3 className="heading" style={{ fontSize: 18, margin: 0, color: "#0f172a" }}>
+                  Your Financial Journey
+                </h3>
+              </div>
+              <Link
+                href="/dashboard"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#0066f5",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                View all <ChevronRight size={15} />
+              </Link>
+            </div>
+
+            {/* 3 Journey Cards */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 18,
+              }}
+            >
+              {journeys.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={idx}
+                    href={item.href}
+                    className="card hover-lift"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      minHeight: 180,
+                      padding: 22,
+                      border: `1px solid ${item.borderColor}`,
+                      textDecoration: "none",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background: item.iconBg,
+                          color: item.iconColor,
+                          display: "grid",
+                          placeItems: "center",
+                          marginBottom: 16,
+                        }}
+                      >
+                        <Icon size={22} />
+                      </div>
+
+                      <h4
+                        className="heading"
+                        style={{ fontSize: 16, margin: "0 0 6px", color: "#0f172a" }}
+                      >
+                        {item.title}
+                      </h4>
+                      <p style={{ fontSize: 13, color: "#64748b", margin: 0, lineHeight: 1.5 }}>
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    <div
                       style={{
-                        display: "block",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        fontSize: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#0066f5",
+                        marginTop: 18,
                       }}
                     >
-                      {claim.hospital_name ||
-                        `${claim.patient_relation || "Medical"} claim`}
-                    </span>
-                    <span
-                      className="muted"
-                      style={{ display: "block", marginTop: 3, fontSize: 12 }}
-                    >
-                      {claim.case_code} ·{" "}
-                      {new Date(claim.created_at).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </span>
-                  <span className="row" style={{ flexShrink: 0, gap: 10 }}>
-                    <span className="pill pill-cream">
-                      {readableStatus(claim.status)}
-                    </span>
-                    <ArrowRight
-                      size={16}
-                      color="var(--muted)"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </Link>
-              ))}
+                      <span>Explore</span>
+                      <ArrowRight size={14} />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-          )}
-        </section>
-      </main>
+          </section>
+
+          {/* Quick Actions List (Screen 2 Mobile in Application UI.png) */}
+          <section style={{ marginBottom: 36 }}>
+            <h3 className="heading" style={{ fontSize: 16, margin: "0 0 14px", color: "#475569" }}>
+              Quick Actions
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <Link
+                href={latestCaseId ? `/case/${latestCaseId}` : "/intake"}
+                className="card hover-lift"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#e0f2fe",
+                      color: "#0284c7",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <Activity size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>
+                      Check Claim Status
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      Track your insurance claim
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={16} color="#94a3b8" />
+              </Link>
+
+              <Link
+                href={latestCaseId ? `/case/${latestCaseId}#money-map` : "/intake"}
+                className="card hover-lift"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#ecfdf5",
+                      color: "#059669",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <PieChart size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>
+                      View Money Map
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      See your bill vs coverage
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={16} color="#94a3b8" />
+              </Link>
+
+              <Link
+                href={uploadHref}
+                className="card hover-lift"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#eff6ff",
+                      color: "#0066f5",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <Upload size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#0f172a" }}>
+                      Upload Documents
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      Policy, bill, discharge summary
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight size={16} color="#94a3b8" />
+              </Link>
+            </div>
+          </section>
+
+          {/* Recent Claims Section */}
+          <section>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <h3 className="heading" style={{ fontSize: 18, margin: 0, color: "#0f172a" }}>
+                  Recent Claims
+                </h3>
+                <p className="muted" style={{ margin: "2px 0 0", fontSize: 13 }}>
+                  {claimCases.length} active {claimCases.length === 1 ? "claim" : "claims"}
+                </p>
+              </div>
+
+              <Link href="/intake" className="btn btn-outline btn-sm">
+                New claim <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            {casesError ? (
+              <div className="card" role="alert" style={{ color: "var(--red)" }}>
+                We could not load your claims. Please refresh and try again.
+              </div>
+            ) : claimCases.length === 0 ? (
+              <div
+                className="card"
+                style={{
+                  padding: "36px 24px",
+                  textAlign: "center",
+                  background: "#ffffff",
+                }}
+              >
+                <FileText
+                  size={36}
+                  style={{ color: "#94a3b8", margin: "0 auto 12px" }}
+                />
+                <h4 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
+                  No claims started yet
+                </h4>
+                <p className="muted" style={{ margin: "0 auto 20px", maxWidth: 420, fontSize: 13.5 }}>
+                  Create a claim to receive real-time coverage calculations, missing document checks, and financing options.
+                </p>
+                <Link href="/intake" className="btn btn-primary">
+                  Start your first claim <ArrowRight size={16} />
+                </Link>
+              </div>
+            ) : (
+              <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                {claimCases.map((claim, index) => (
+                  <Link
+                    key={claim.id}
+                    href={`/case/${encodeURIComponent(claim.id)}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "16px 20px",
+                      borderBottom:
+                        index < claimCases.length - 1
+                          ? "1px solid #f1f5f9"
+                          : "none",
+                      textDecoration: "none",
+                      transition: "background 0.15s ease",
+                    }}
+                    className="hover:bg-slate-50"
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 10,
+                          background: "#e0f2fe",
+                          color: "#0284c7",
+                          display: "grid",
+                          placeItems: "center",
+                        }}
+                      >
+                        <ShieldCheck size={20} />
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14.5,
+                            color: "#0f172a",
+                          }}
+                        >
+                          {claim.hospital_name || `${claim.patient_relation || "Medical"} Claim`}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                          {claim.case_code || claim.id} ·{" "}
+                          {new Date(claim.created_at).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span className="pill pill-green">
+                        {readableStatus(claim.status)}
+                      </span>
+                      <ChevronRight size={16} color="#94a3b8" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+
+        {/* Ecosystem Footer matching Application UI.png */}
+        <EcosystemFooter />
+      </div>
     </div>
   );
 }

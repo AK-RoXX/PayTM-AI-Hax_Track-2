@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { PaytmLogo } from '@/components/common/PaytmLogo';
+import { SahayakRobot } from '@/components/common/SahayakRobot';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,38 +32,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px',
-      background: `
-        radial-gradient(ellipse at 20% 20%, rgba(200,131,42,0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(26,37,64,0.06) 0%, transparent 50%),
-        var(--bg)
-      `,
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        background: `
+          radial-gradient(ellipse at 30% 20%, rgba(0, 186, 242, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(0, 41, 112, 0.06) 0%, transparent 50%),
+          var(--bg)
+        `,
+      }}
+    >
       <div style={{ width: '100%', maxWidth: 420 }} className="anim-fade-in-up">
         {/* Brand */}
-        <div className="text-center" style={{ marginBottom: 36 }}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 12, background: 'var(--navy)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-            }}>🩺</div>
-            <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--navy)', letterSpacing: '-0.02em' }}>
-              Paytm <span style={{ color: 'var(--amber)' }}>Sahaayak</span>
-            </span>
-          </Link>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--navy)', marginBottom: 6, marginTop: 20 }}>
+        <div className="text-center" style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <SahayakRobot size="md" online animated />
+          </div>
+          <PaytmLogo size="lg" subtitleText="AI Financial Journey Assistant" href="/" />
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: 'var(--paytm-navy)',
+              marginBottom: 4,
+              marginTop: 18,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
             Welcome back
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14 }}>Sign in to your account to continue</p>
+          <p style={{ color: 'var(--muted)', fontSize: 13.5, margin: 0 }}>
+            Sign in to access your claims &amp; Money Map
+          </p>
         </div>
 
         {/* Card */}
-        <div className="card" style={{ padding: '32px' }}>
+        <div className="card" style={{ padding: '32px', borderRadius: 20 }}>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label htmlFor="email" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)', marginBottom: 6 }}>
+              <label
+                htmlFor="email"
+                style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--ink-mid)',
+                  marginBottom: 6,
+                }}
+              >
                 Email address
               </label>
               <input
@@ -69,19 +91,25 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                placeholder="you@example.com"
+                placeholder="rahul@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 className={error ? 'error' : ''}
               />
             </div>
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label htmlFor="password" style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}>
+                <label
+                  htmlFor="password"
+                  style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}
+                >
                   Password
                 </label>
-                <Link href="/auth/forgot-password" style={{ fontSize: 12, color: 'var(--blue)', fontWeight: 500 }}>
+                <Link
+                  href="/auth/forgot-password"
+                  style={{ fontSize: 12, color: 'var(--primary-blue)', fontWeight: 500 }}
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -92,17 +120,22 @@ export default function LoginPage() {
                 required
                 placeholder="••••••••"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 className={error ? 'error' : ''}
               />
             </div>
 
             {error && (
-              <div style={{
-                background: 'var(--red-pale)', border: '1px solid #f5c6c6',
-                borderRadius: 10, padding: '10px 14px',
-                fontSize: 13, color: 'var(--red)',
-              }}>
+              <div
+                style={{
+                  background: 'var(--red-pale)',
+                  border: '1px solid var(--red-border)',
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  color: 'var(--red-dark)',
+                }}
+              >
                 {error}
               </div>
             )}
@@ -112,24 +145,33 @@ export default function LoginPage() {
               type="submit"
               className="btn btn-primary"
               disabled={loading}
-              style={{ width: '100%', padding: '14px', fontSize: 15, marginTop: 4, borderRadius: 14 }}
+              style={{
+                width: '100%',
+                padding: '13px',
+                fontSize: 15,
+                marginTop: 4,
+                borderRadius: 14,
+              }}
             >
               {loading ? 'Signing in…' : 'Sign in →'}
             </button>
           </form>
 
-          <div className="divider" style={{ margin: '24px 0' }} />
+          <div className="divider" style={{ margin: '22px 0' }} />
 
-          <p className="text-center" style={{ fontSize: 13, color: 'var(--muted)' }}>
+          <p className="text-center" style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
             Don&apos;t have an account?{' '}
-            <Link href="/auth/signup" style={{ color: 'var(--navy)', fontWeight: 600 }}>
+            <Link
+              href="/auth/signup"
+              style={{ color: 'var(--primary-blue)', fontWeight: 700 }}
+            >
               Create one free
             </Link>
           </p>
         </div>
 
         <p className="text-center" style={{ marginTop: 24, fontSize: 12, color: 'var(--subtle)' }}>
-          Prototype only — no real claim submissions
+          Paytm Sahayak · Protected by 256-bit encryption
         </p>
       </div>
     </div>

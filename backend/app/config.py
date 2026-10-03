@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     sarvam_api_key: str = ""
     gemini_api_key: str = ""
     gemini_ocr_model: str = "gemini-1.5-flash"
+    gemini_stt_model: str = "gemini-3.5-transcribe"
     ocr_provider_order: str = "sarvam,gemini"
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     sarvam_job_timeout_seconds: int = 180

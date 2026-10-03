@@ -2,17 +2,18 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles, User, Hospital, FileText, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createCase } from "@/lib/api";
+import { VoiceInput } from "./VoiceInput";
 
 export function ClaimIntakeForm() {
   const router = useRouter();
   const [description, setDescription] = useState("");
-  const [patientRelation, setPatientRelation] = useState("");
+  const [patientRelation, setPatientRelation] = useState("self");
   const [hospitalName, setHospitalName] = useState("");
   const [estimatedBill, setEstimatedBill] = useState("");
-  const [language, setLanguage] = useState("english");
+  const [language, setLanguage] = useState("hinglish");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,87 +61,164 @@ export function ClaimIntakeForm() {
     }
   };
 
+  const relations = [
+    { value: "self", label: "Self" },
+    { value: "mother", label: "Mother" },
+    { value: "father", label: "Father" },
+    { value: "spouse", label: "Spouse" },
+    { value: "child", label: "Child" },
+    { value: "other", label: "Other" },
+  ];
+
   return (
-    <form onSubmit={submitClaim} className="grid" style={{ gap: 18 }}>
-      <label className="col">
-        <span className="label">Describe the situation</span>
+    <form onSubmit={submitClaim} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Voice Prompt Bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          background: "#eff6ff",
+          border: "1px solid #bfdbfe",
+          borderRadius: 14,
+          flexWrap: "wrap",
+          gap: 10,
+        }}
+      >
+        <span style={{ fontSize: 13, color: "#1e40af", fontWeight: 500 }}>
+          💡 Don&apos;t want to type? Tap to describe your hospital emergency by voice:
+        </span>
+        <VoiceInput onTranscript={(val) => setDescription(val)} />
+      </div>
+
+      {/* Description Textarea */}
+      <div>
+        <label
+          htmlFor="description"
+          style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}
+        >
+          Describe the hospitalization situation
+        </label>
         <textarea
+          id="description"
           required
           maxLength={2000}
-          rows={5}
+          rows={4}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          placeholder="Who is in hospital, and what support do you need?"
+          placeholder="e.g. Mummy ko hospital mein admit kiya hai. Bill ₹3,00,000 ka estimate hai. Policy number XYZ hai..."
+          style={{
+            borderRadius: 12,
+            border: "1.5px solid #cbd5e1",
+            padding: "12px 14px",
+            fontSize: 14,
+            background: "#ffffff",
+          }}
         />
-      </label>
+      </div>
 
-      <div className="grid two">
-        <label className="col">
-          <span className="label">Patient relation</span>
-          <select
-            required
-            value={patientRelation}
-            onChange={(event) => setPatientRelation(event.target.value)}
-          >
-            <option value="">Choose relation</option>
-            <option value="self">Self</option>
-            <option value="mother">Mother</option>
-            <option value="father">Father</option>
-            <option value="spouse">Spouse</option>
-            <option value="child">Child</option>
-            <option value="other">Other</option>
-          </select>
+      {/* Patient Relation Pills */}
+      <div>
+        <label style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
+          Patient Relation:
         </label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {relations.map((rel) => (
+            <button
+              key={rel.value}
+              type="button"
+              onClick={() => setPatientRelation(rel.value)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                border: "1.5px solid",
+                borderColor: patientRelation === rel.value ? "#0066f5" : "#cbd5e1",
+                background: patientRelation === rel.value ? "#eff6ff" : "#ffffff",
+                color: patientRelation === rel.value ? "#0066f5" : "#475569",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {patientRelation === rel.value && "✓ "}
+              {rel.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <label className="col">
-          <span className="label">Preferred language</span>
-          <select
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
+      {/* Hospital Name & Estimated Bill */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+        <div>
+          <label
+            htmlFor="hospital-name"
+            style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}
           >
-            <option value="english">English</option>
-            <option value="hindi">Hindi</option>
-            <option value="hinglish">Hindi / Hinglish</option>
-          </select>
-        </label>
-
-        <label className="col">
-          <span className="label">Hospital</span>
+            Hospital Name
+          </label>
           <input
+            id="hospital-name"
             value={hospitalName}
             onChange={(event) => setHospitalName(event.target.value)}
             maxLength={160}
-            placeholder="Hospital name"
+            placeholder="e.g. Apollo Hospital, Max Healthcare"
+            style={{
+              borderRadius: 12,
+              border: "1.5px solid #cbd5e1",
+              padding: "11px 14px",
+              background: "#ffffff",
+            }}
           />
-        </label>
+        </div>
 
-        <label className="col">
-          <span className="label">Estimated bill (optional)</span>
+        <div>
+          <label
+            htmlFor="estimated-bill"
+            style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}
+          >
+            Estimated Hospital Bill (Optional)
+          </label>
           <input
+            id="estimated-bill"
             type="number"
             min="0"
             step="1"
             inputMode="decimal"
             value={estimatedBill}
             onChange={(event) => setEstimatedBill(event.target.value)}
-            placeholder="₹"
+            placeholder="₹ 3,00,000"
+            style={{
+              borderRadius: 12,
+              border: "1.5px solid #cbd5e1",
+              padding: "11px 14px",
+              background: "#ffffff",
+            }}
           />
-        </label>
+        </div>
       </div>
 
       {error && (
-        <p role="alert" className="pill pill-red" style={{ padding: 12 }}>
+        <div style={{ padding: "10px 14px", background: "#fef2f2", color: "#b91c1c", borderRadius: 10, fontSize: 13 }}>
           {error}
-        </p>
+        </div>
       )}
 
-      <div className="row-between" style={{ flexWrap: "wrap" }}>
-        <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-          You can add or correct details later.
+      {/* Actions */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", marginTop: 8 }}>
+        <p style={{ margin: 0, fontSize: 12.5, color: "#64748b" }}>
+          Next: Upload your insurance policy and hospital bills for AI reading.
         </p>
-        <button className="btn btn-amber" type="submit" disabled={submitting}>
-          {submitting ? "Creating claim…" : "Create claim"}
-          {!submitting && <ArrowRight size={16} aria-hidden="true" />}
+
+        <button
+          type="submit"
+          className="btn btn-primary btn-lg"
+          disabled={submitting}
+          style={{ borderRadius: 14, gap: 8 }}
+        >
+          {submitting ? "Creating Claim Case…" : "Continue to Document Upload"}
+          {!submitting && <ArrowRight size={17} />}
         </button>
       </div>
     </form>

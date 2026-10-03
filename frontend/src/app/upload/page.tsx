@@ -2,7 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { ArrowLeft, Upload, FileText, Image as ImageIcon, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppNavbar } from "@/components/layout/AppNavbar";
+import { EcosystemFooter } from "@/components/common/EcosystemFooter";
 
 type UploadStatus = "idle" | "uploading" | "processing" | "done" | "error";
 
@@ -29,14 +33,6 @@ interface ExistingDocument {
   facts_count?: number;
 }
 
-const ACCEPTED_EXTENSIONS = new Set([
-  "pdf",
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "docx",
-]);
 const ACCEPTED_EXTS = ".pdf,.jpg,.jpeg,.png,.webp,.docx";
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
@@ -46,25 +42,18 @@ function formatBytes(b: number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileIcon(type: string) {
-  if (type.startsWith("image/")) return "🖼️";
-  if (type === "application/pdf") return "📄";
-  return "📝";
-}
-
 export default function UploadPage() {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [cases, setCases] = useState<CaseOption[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState("");
-  const [existingDocuments, setExistingDocuments] = useState<
-    ExistingDocument[]
-  >([]);
+  const [existingDocuments, setExistingDocuments] = useState<ExistingDocument[]>([]);
   const [loadingCases, setLoadingCases] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [globalError, setGlobalError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | undefined>();
+  const [userName, setUserName] = useState<string>("Rahul Sharma");
   const inputRef = useRef<HTMLInputElement>(null);
-  // Map from entry id → actual File object (not stored in React state)
   const fileRefs = useRef<Map<string, File>>(new Map());
 
   useEffect(() => {
@@ -74,6 +63,7 @@ export default function UploadPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       if (!user) {
         if (!cancelled) {
           setGlobalError("You must be signed in to upload.");
@@ -82,25 +72,29 @@ export default function UploadPage() {
         return;
       }
 
+      setUserEmail(user.email);
+      setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Rahul Sharma");
+
       const { data, error } = await supabase
         .from("cases")
         .select("id, hospital_name")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+
       if (cancelled) return;
       if (error) setGlobalError("Could not load your cases. Please try again.");
       const userCases = data ?? [];
       setCases(userCases);
-      const requestedCaseId = new URLSearchParams(window.location.search).get(
-        "caseId",
-      );
+
+      const requestedCaseId = new URLSearchParams(window.location.search).get("caseId");
       setSelectedCaseId(
         userCases.some((c) => c.id === requestedCaseId)
           ? requestedCaseId!
-          : (userCases[0]?.id ?? ""),
+          : userCases[0]?.id ?? "",
       );
       setLoadingCases(false);
     };
+
     void loadCases();
     return () => {
       cancelled = true;
@@ -112,11 +106,13 @@ export default function UploadPage() {
     const loadDocuments = async () => {
       setExistingDocuments([]);
       if (!selectedCaseId) return;
+
       const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.access_token) return;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       try {
         const response = await fetch(
@@ -125,118 +121,88 @@ export default function UploadPage() {
             headers: { Authorization: `Bearer ${session.access_token}` },
           },
         );
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          if (!cancelled) {
-            setGlobalError(
-              error.detail ??
-                `Could not load documents (HTTP ${response.status}).`,
-            );
-          }
-          return;
-        }
+        if (!response.ok) return;
         const result = await response.json();
         if (!cancelled) setExistingDocuments(result.items ?? []);
       } catch {
-        // Existing documents remain optional while the backend is unavailable.
+        // Fallback silently if offline
       }
     };
+
     void loadDocuments();
     return () => {
       cancelled = true;
     };
   }, [selectedCaseId]);
 
-  const addFiles = useCallback((incoming: File[]) => {
-    setGlobalError("");
+  const addFiles = useCallback((files: FileList | File[]) => {
     const newEntries: FileEntry[] = [];
-
-    for (const f of incoming) {
-      const extension = f.name.split(".").pop()?.toLowerCase() ?? "";
-      if (!ACCEPTED_EXTENSIONS.has(extension)) {
-        setGlobalError(
-          `"${f.name}" is not supported. Use PDF, JPG, PNG, WEBP, or DOCX.`,
-        );
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE) {
+        setGlobalError(`File "${file.name}" exceeds the 20 MB limit.`);
         continue;
       }
-      if (f.size > MAX_FILE_SIZE) {
-        setGlobalError(
-          `"${f.name}" exceeds the 20 MB limit (${formatBytes(f.size)}).`,
-        );
-        continue;
-      }
-      const id = `${f.name}-${Date.now()}-${Math.random()}`;
-      fileRefs.current.set(id, f);
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      fileRefs.current.set(id, file);
       newEntries.push({
         id,
-        name: f.name,
-        size: f.size,
-        type: f.type,
+        name: file.name,
+        size: file.size,
+        type: file.type,
         status: "idle",
       });
     }
-
-    if (newEntries.length > 0) setEntries((prev) => [...prev, ...newEntries]);
+    setEntries((prev) => [...prev, ...newEntries]);
   }, []);
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    addFiles(Array.from(e.dataTransfer.files));
-  };
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    },
+    [addFiles],
+  );
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addFiles(Array.from(e.target.files));
-    e.target.value = "";
+    if (e.target.files) {
+      addFiles(e.target.files);
+      e.target.value = "";
+    }
   };
 
-  const removeEntry = (id: string) => {
-    fileRefs.current.delete(id);
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-  };
-
-  const setStatus = (id: string, patch: Partial<FileEntry>) =>
+  const setStatus = (id: string, update: Partial<FileEntry>) => {
     setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+      prev.map((e) => (e.id === id ? { ...e, ...update } : e)),
     );
+  };
 
   const uploadAll = async () => {
-    if (!selectedCaseId) {
-      setGlobalError("Choose a case before uploading.");
-      return;
-    }
+    if (!selectedCaseId || uploading) return;
+    setUploading(true);
+    setGlobalError("");
+
     const supabase = createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
-      setGlobalError("Your session expired. Sign in again.");
+      setGlobalError("You must be logged in to upload.");
+      setUploading(false);
       return;
     }
 
-    const pending = entries.filter(
-      (e) => e.status === "idle" || e.status === "error",
-    );
-    if (!pending.length) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-    setUploading(true);
-    setGlobalError("");
-
-    for (const entry of pending) {
+    for (const entry of entries) {
+      if (entry.status === "done") continue;
       const fileObj = fileRefs.current.get(entry.id);
-      if (!fileObj) {
-        setStatus(entry.id, {
-          status: "error",
-          errorMessage: "File lost — re-select it.",
-        });
-        continue;
-      }
+      if (!fileObj) continue;
 
-      setStatus(entry.id, { status: "uploading", errorMessage: undefined });
-      setStatus(entry.id, { status: "processing" });
+      setStatus(entry.id, { status: "uploading" });
+
       try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
         const formData = new FormData();
         formData.append("file", fileObj, entry.name);
         const res = await fetch(
@@ -247,15 +213,13 @@ export default function UploadPage() {
             body: formData,
           },
         );
+
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.detail ?? `Server error ${res.status}`);
         }
+
         const result = await res.json();
-        if (result.status !== "done")
-          throw new Error(
-            result.error_message ?? "Document processing failed.",
-          );
         setStatus(entry.id, { status: "done" });
         setExistingDocuments((prev) => [
           {
@@ -286,494 +250,333 @@ export default function UploadPage() {
   ).length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-      {/* Nav */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "rgba(250,247,239,0.9)",
-          backdropFilter: "blur(16px)",
-          borderBottom: "1px solid var(--border-subtle)",
-          padding: "0 24px",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 800,
-            margin: "auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 60,
-          }}
-        >
-          <Link
-            href="/dashboard"
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
-          >
-            <span style={{ color: "var(--muted)", fontSize: 18 }}>←</span>
-            <span
-              style={{ fontWeight: 700, fontSize: 14, color: "var(--navy)" }}
-            >
-              Dashboard
-            </span>
-          </Link>
-          <span className="pill pill-cream">Document Upload</span>
-        </div>
-      </nav>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
+      <AppSidebar currentCaseId={selectedCaseId} />
 
-      <div style={{ maxWidth: 800, margin: "auto", padding: "40px 24px 80px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1
-            style={{
-              fontSize: 28,
-              fontWeight: 800,
-              color: "var(--navy)",
-              marginBottom: 8,
-            }}
-          >
-            Upload your documents
-          </h1>
-          <p
-            style={{
-              color: "var(--muted)",
-              fontSize: 15,
-              lineHeight: 1.6,
-              maxWidth: 560,
-            }}
-          >
-            Add insurance policies, hospital bills, admission records, or any
-            relevant documents. Sahaayak reads them and extracts key facts
-            automatically.
-          </p>
-        </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <AppNavbar userName={userName} userEmail={userEmail} />
 
-        {/* Accepted formats */}
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            flexWrap: "wrap",
-            marginBottom: 22,
-          }}
-        >
-          {[
-            { icon: "📄", label: "PDF" },
-            { icon: "🖼️", label: "JPG / PNG / WEBP" },
-            { icon: "📝", label: "DOCX" },
-            { icon: "⚖️", label: "Max 20 MB" },
-          ].map((t) => (
-            <span
-              key={t.label}
-              className="pill pill-cream"
-              style={{ fontSize: 12, padding: "5px 12px" }}
-            >
-              {t.icon} {t.label}
-            </span>
-          ))}
-        </div>
-
-        <label
-          htmlFor="case-select"
-          style={{
-            display: "block",
-            marginBottom: 8,
-            color: "var(--navy)",
-            fontWeight: 700,
-            fontSize: 13,
-          }}
-        >
-          Claim case
-        </label>
-        <select
-          id="case-select"
-          value={selectedCaseId}
-          onChange={(e) => setSelectedCaseId(e.target.value)}
-          disabled={loadingCases || cases.length === 0 || uploading}
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            borderRadius: 10,
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            color: "var(--navy)",
-            marginBottom: 22,
-          }}
-        >
-          {loadingCases && <option value="">Loading your cases…</option>}
-          {!loadingCases && cases.length === 0 && (
-            <option value="">No cases available</option>
-          )}
-          {cases.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.hospital_name || "Medical claim"} · {c.id.slice(0, 8)}
-            </option>
-          ))}
-        </select>
-        {!loadingCases && cases.length === 0 && (
-          <p
-            style={{
-              color: "var(--muted)",
-              fontSize: 13,
-              margin: "-12px 0 20px",
-            }}
-          >
-            Create a claim case before adding documents.
-          </p>
-        )}
-
-        {/* Drop zone */}
-        <div
-          id="upload-dropzone"
-          role="button"
-          tabIndex={0}
-          onClick={() => inputRef.current?.click()}
-          onKeyDown={(e) =>
-            (e.key === "Enter" || e.key === " ") && inputRef.current?.click()
-          }
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          style={{
-            border: `2px dashed ${dragOver ? "var(--amber)" : "var(--border)"}`,
-            borderRadius: 22,
-            padding: "52px 32px",
-            textAlign: "center",
-            cursor: "pointer",
-            background: dragOver ? "var(--amber-pale)" : "var(--surface)",
-            transition: "all 0.2s var(--ease-out)",
-            marginBottom: 20,
-            outline: "none",
-          }}
-        >
-          <div style={{ fontSize: 52, marginBottom: 14 }}>
-            {dragOver ? "📂" : "☁️"}
-          </div>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: 17,
-              color: "var(--navy)",
-              marginBottom: 6,
-            }}
-          >
-            {dragOver ? "Drop files here" : "Drag & drop files here"}
-          </div>
-          <div
-            style={{ color: "var(--muted)", fontSize: 14, marginBottom: 22 }}
-          >
-            PDFs, images, or DOCX documents — or click to browse
-          </div>
-          <span
-            className="btn btn-primary btn-sm"
-            style={{ pointerEvents: "none" }}
-          >
-            Browse files
-          </span>
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={ACCEPTED_EXTS}
-            onChange={onInputChange}
-            style={{ display: "none" }}
-            aria-label="Select files to upload"
-          />
-        </div>
-
-        {/* Global error */}
-        {globalError && (
-          <div
-            style={{
-              background: "var(--red-pale)",
-              border: "1px solid #f5c6c6",
-              borderRadius: 12,
-              padding: "12px 16px",
-              marginBottom: 18,
-              fontSize: 13,
-              color: "var(--red)",
-            }}
-          >
-            ⚠️ {globalError}
-          </div>
-        )}
-
-        {/* File list */}
-        {entries.length > 0 && (
-          <div className="card" style={{ padding: "22px" }}>
-            {/* Header row */}
-            <div
+        <main style={{ padding: "30px 20px 70px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
+          {/* Breadcrumb */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+            <Link
+              href="/dashboard"
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
+                gap: 6,
+                fontSize: 13,
+                color: "#64748b",
               }}
             >
+              <ArrowLeft size={14} /> Dashboard
+            </Link>
+            <span style={{ color: "#cbd5e1" }}>/</span>
+            <span style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>
+              Upload Documents
+            </span>
+          </div>
+
+          {/* Header */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span className="label" style={{ color: "#0066f5" }}>Document Vault</span>
+              <span className="pill pill-blue">AI-Powered OCR</span>
+            </div>
+            <h1 className="heading" style={{ fontSize: 26, margin: "2px 0 6px", color: "var(--paytm-navy)" }}>
+              Upload Case Documents
+            </h1>
+            <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+              Upload your insurance policy, hospital estimate, admission card, and final bills. Paytm Sahayak extracts clauses, room rent caps, and non-payables.
+            </p>
+          </div>
+
+          {/* Case Selector Card */}
+          <div className="card" style={{ padding: "18px 20px", marginBottom: 20 }}>
+            <label
+              htmlFor="case-select"
+              style={{
+                display: "block",
+                marginBottom: 8,
+                color: "#0f172a",
+                fontWeight: 700,
+                fontSize: 13,
+              }}
+            >
+              Select Medical Claim Case:
+            </label>
+            <select
+              id="case-select"
+              value={selectedCaseId}
+              onChange={(e) => setSelectedCaseId(e.target.value)}
+              disabled={loadingCases || cases.length === 0 || uploading}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1.5px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#0f172a",
+                fontWeight: 500,
+              }}
+            >
+              {loadingCases && <option value="">Loading your claims…</option>}
+              {!loadingCases && cases.length === 0 && (
+                <option value="">No claims found — Create a claim first</option>
+              )}
+              {cases.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.hospital_name || "Medical Claim"} · Case #{c.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Drag & Drop Zone */}
+          <div
+            id="upload-dropzone"
+            role="button"
+            tabIndex={0}
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={(e) =>
+              (e.key === "Enter" || e.key === " ") && inputRef.current?.click()
+            }
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            style={{
+              border: `2px dashed ${dragOver ? "#0066f5" : "#cbd5e1"}`,
+              borderRadius: 20,
+              padding: "48px 32px",
+              textAlign: "center",
+              cursor: "pointer",
+              background: dragOver ? "#eff6ff" : "#ffffff",
+              transition: "all 0.2s ease",
+              marginBottom: 24,
+              boxShadow: "0 2px 10px rgba(0, 41, 112, 0.03)",
+            }}
+          >
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: "50%",
+                background: "#e0f2fe",
+                color: "#0066f5",
+                display: "grid",
+                placeItems: "center",
+                margin: "0 auto 16px",
+              }}
+            >
+              <Upload size={28} />
+            </div>
+
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", margin: "0 0 6px" }}>
+              {dragOver ? "Drop your documents here" : "Click to upload or drag & drop"}
+            </h3>
+            <p style={{ color: "#64748b", fontSize: 13.5, margin: "0 0 16px" }}>
+              Supports PDF, JPG, PNG, WEBP, and DOCX (Max 20 MB per file)
+            </p>
+
+            <span className="btn btn-primary btn-sm" style={{ pointerEvents: "none", borderRadius: 20 }}>
+              Browse Files
+            </span>
+
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={ACCEPTED_EXTS}
+              onChange={onInputChange}
+              style={{ display: "none" }}
+              aria-label="Select files to upload"
+            />
+          </div>
+
+          {globalError && (
+            <div
+              style={{
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: 12,
+                padding: "12px 16px",
+                marginBottom: 20,
+                fontSize: 13,
+                color: "#b91c1c",
+              }}
+            >
+              ⚠️ {globalError}
+            </div>
+          )}
+
+          {/* Files Queued for Upload */}
+          {entries.length > 0 && (
+            <div className="card" style={{ padding: "22px", marginBottom: 24 }}>
               <div
-                style={{ fontWeight: 700, color: "var(--navy)", fontSize: 15 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 16,
+                }}
               >
-                {entries.length} file{entries.length !== 1 ? "s" : ""}
-                {doneCount > 0 && (
-                  <span
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 15 }}>
+                  {entries.length} file{entries.length !== 1 ? "s" : ""} selected
+                  {doneCount > 0 && (
+                    <span style={{ color: "#10b981", marginLeft: 8, fontSize: 13 }}>
+                      · {doneCount} processed ✓
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    entries.forEach((e) => fileRefs.current.delete(e.id));
+                    setEntries([]);
+                  }}
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: "#ef4444", fontSize: 12 }}
+                >
+                  Clear all
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {entries.map((e) => {
+                  const isPdf = e.name.toLowerCase().endsWith(".pdf");
+
+                  return (
+                    <div
+                      key={e.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        background: e.status === "done" ? "#ecfdf5" : "#f8fafc",
+                        border: `1px solid ${e.status === "done" ? "#a7f3d0" : "#e2e8f0"}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 8,
+                          background: isPdf ? "#fee2e2" : "#e0f2fe",
+                          color: isPdf ? "#dc2626" : "#0284c7",
+                          display: "grid",
+                          placeItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isPdf ? <FileText size={16} /> : <ImageIcon size={16} />}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13.5, color: "#0f172a" }}>
+                          {e.name}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "#64748b" }}>
+                          {formatBytes(e.size)}
+                        </div>
+                      </div>
+
+                      <div style={{ flexShrink: 0 }}>
+                        {e.status === "done" && (
+                          <span className="pill pill-green" style={{ fontSize: 11 }}>
+                            ✓ Processed
+                          </span>
+                        )}
+                        {e.status === "uploading" && (
+                          <span className="pill pill-blue" style={{ fontSize: 11 }}>
+                            Uploading…
+                          </span>
+                        )}
+                        {e.status === "idle" && (
+                          <span className="pill pill-slate" style={{ fontSize: 11 }}>
+                            Ready
+                          </span>
+                        )}
+                        {e.status === "error" && (
+                          <span className="pill pill-red" style={{ fontSize: 11 }}>
+                            Failed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {pendingCount > 0 && (
+                <button
+                  type="button"
+                  onClick={uploadAll}
+                  disabled={uploading || !selectedCaseId}
+                  className="btn btn-primary"
+                  style={{
+                    width: "100%",
+                    marginTop: 18,
+                    padding: "12px",
+                    borderRadius: 12,
+                    fontSize: 14.5,
+                  }}
+                >
+                  {uploading
+                    ? "⏳ Processing documents with AI…"
+                    : `Upload & Process ${pendingCount} Document${pendingCount !== 1 ? "s" : ""} →`}
+                </button>
+              )}
+
+              {doneCount === entries.length && entries.length > 0 && (
+                <div style={{ marginTop: 18, textAlign: "center" }}>
+                  <Link
+                    href={`/case/${encodeURIComponent(selectedCaseId)}`}
+                    className="btn btn-primary"
+                  >
+                    View Updated Case Money Map →
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Already Processed Documents */}
+          {existingDocuments.length > 0 && (
+            <div className="card" style={{ padding: "20px 22px" }}>
+              <h3 className="heading" style={{ fontSize: 16, margin: "0 0 14px", color: "var(--paytm-navy)" }}>
+                Processed Case Documents ({existingDocuments.length})
+              </h3>
+              <div style={{ display: "grid", gap: 8 }}>
+                {existingDocuments.map((doc) => (
+                  <div
+                    key={doc.id}
                     style={{
-                      color: "var(--green)",
-                      marginLeft: 8,
-                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 0",
+                      borderBottom: "1px solid #f1f5f9",
                       fontSize: 13,
                     }}
                   >
-                    · {doneCount} processed ✓
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  entries.forEach((e) => fileRefs.current.delete(e.id));
-                  setEntries([]);
-                }}
-                className="btn btn-ghost btn-sm"
-                style={{ color: "var(--red)", fontSize: 12 }}
-              >
-                Clear all
-              </button>
-            </div>
-
-            {/* File rows */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {entries.map((e) => (
-                <div
-                  key={e.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "12px 14px",
-                    borderRadius: 12,
-                    background:
-                      e.status === "done"
-                        ? "var(--green-pale)"
-                        : e.status === "error"
-                          ? "var(--red-pale)"
-                          : e.status === "uploading" ||
-                              e.status === "processing"
-                            ? "var(--blue-light)"
-                            : "var(--cream-100)",
-                    border: `1px solid ${
-                      e.status === "done"
-                        ? "#b7e4cc"
-                        : e.status === "error"
-                          ? "#f5c6c6"
-                          : e.status === "uploading" ||
-                              e.status === "processing"
-                            ? "#c8dffa"
-                            : "var(--border-subtle)"
-                    }`,
-                    transition: "background 0.3s, border-color 0.3s",
-                  }}
-                >
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>
-                    {fileIcon(e.type)}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 13,
-                        color: "var(--navy)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {e.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "var(--muted)",
-                        marginTop: 2,
-                      }}
-                    >
-                      {formatBytes(e.size)}
-                      {e.errorMessage && (
-                        <span style={{ color: "var(--red)", marginLeft: 6 }}>
-                          · {e.errorMessage}
-                        </span>
-                      )}
-                    </div>
+                    <span style={{ fontWeight: 600, color: "#1e293b" }}>{doc.file_name}</span>
+                    <span style={{ color: "#059669", fontSize: 12 }}>
+                      {doc.page_count ? `${doc.page_count} pages` : "Analyzed"} ✓
+                    </span>
                   </div>
-                  <div style={{ flexShrink: 0 }}>
-                    {e.status === "idle" && (
-                      <span
-                        className="pill pill-cream"
-                        style={{ fontSize: 10 }}
-                      >
-                        Ready
-                      </span>
-                    )}
-                    {e.status === "uploading" && (
-                      <span className="pill pill-blue" style={{ fontSize: 10 }}>
-                        <span
-                          style={{
-                            display: "inline-block",
-                            animation: "spin 1s linear infinite",
-                          }}
-                        >
-                          ↻
-                        </span>{" "}
-                        Uploading
-                      </span>
-                    )}
-                    {e.status === "processing" && (
-                      <span className="pill pill-blue" style={{ fontSize: 10 }}>
-                        Processing
-                      </span>
-                    )}
-                    {e.status === "done" && (
-                      <span
-                        className="pill pill-green"
-                        style={{ fontSize: 10 }}
-                      >
-                        ✓ Done
-                      </span>
-                    )}
-                    {e.status === "error" && (
-                      <span className="pill pill-red" style={{ fontSize: 10 }}>
-                        Failed
-                      </span>
-                    )}
-                  </div>
-                  {e.status === "idle" && (
-                    <button
-                      onClick={() => removeEntry(e.id)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--muted)",
-                        fontSize: 18,
-                        padding: "0 2px",
-                        lineHeight: 1,
-                      }}
-                      aria-label={`Remove ${e.name}`}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Upload button */}
-            {pendingCount > 0 && (
-              <button
-                id="upload-start-btn"
-                onClick={uploadAll}
-                disabled={uploading || loadingCases || !selectedCaseId}
-                className="btn btn-amber"
-                style={{
-                  width: "100%",
-                  marginTop: 18,
-                  padding: "14px",
-                  fontSize: 15,
-                  borderRadius: 14,
-                }}
-              >
-                {uploading
-                  ? "⏳ Processing…"
-                  : `Upload & process ${pendingCount} file${pendingCount !== 1 ? "s" : ""} →`}
-              </button>
-            )}
-
-            {doneCount === entries.length && entries.length > 0 && (
-              <div style={{ marginTop: 18, textAlign: "center" }}>
-                <div
-                  style={{
-                    color: "var(--green)",
-                    fontWeight: 700,
-                    fontSize: 15,
-                    marginBottom: 12,
-                  }}
-                >
-                  ✓ All files processed successfully!
-                </div>
-                <Link
-                  href={`/case/${encodeURIComponent(selectedCaseId)}`}
-                  className="btn btn-primary"
-                >
-                  Review this claim →
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {existingDocuments.length > 0 && (
-          <section style={{ marginTop: 24 }}>
-            <div className="label" style={{ marginBottom: 10 }}>
-              Documents in this case
-            </div>
-            <div className="card" style={{ padding: 16 }}>
-              {existingDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "10px 0",
-                    borderBottom: "1px solid var(--border-subtle)",
-                    fontSize: 13,
-                  }}
-                >
-                  <span
-                    style={{ color: "var(--navy)", overflowWrap: "anywhere" }}
-                  >
-                    {document.file_name}
-                  </span>
-                  <span
-                    style={{
-                      color:
-                        document.processing_status === "failed"
-                          ? "var(--red)"
-                          : "var(--muted)",
-                      flexShrink: 0,
-                      textAlign: "right",
-                    }}
-                  >
-                    {document.processing_status === "done"
-                      ? `${document.page_count ?? 0} pages · ${
-                          (document.facts_count ?? 0) > 0
-                            ? `${document.facts_count} facts read`
-                            : "no facts found"
-                        }`
-                      : document.processing_status}
-                  </span>
-                </div>
-              ))}
-              <div style={{ marginTop: 14 }}>
-                <Link
-                  href={`/case/${encodeURIComponent(selectedCaseId)}`}
-                  className="btn btn-primary"
-                >
-                  Review this claim →
-                </Link>
+                ))}
               </div>
             </div>
-          </section>
-        )}
+          )}
+        </main>
+
+        <EcosystemFooter />
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
