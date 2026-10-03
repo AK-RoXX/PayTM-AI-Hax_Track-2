@@ -1,3 +1,4 @@
+from app.agents.knowledge_agent import answer_knowledge_question
 import re
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -264,7 +265,8 @@ async def handle_readiness(case_id, msg, state):
     return HandlerResult(intent=Intent.readiness_question, text=text)
 
 async def stub_product(case_id, msg, state):
-    return HandlerResult(intent=Intent.product_recommendation, text="Here is a comparison of insurances.")
+    answer = await answer_knowledge_question(case_id, msg)
+    return HandlerResult(intent=Intent.product_recommendation, text=answer)
 
 async def stub_action(case_id, msg, state):
     return HandlerResult(intent=Intent.action_request, text="Action suggested, please confirm.")
@@ -303,7 +305,8 @@ async def handle_status(case_id, msg, state):
     return HandlerResult(intent=Intent.status_question, text=f"Your claim is {status_val}.")
 
 async def stub_def(case_id, msg, state):
-    return HandlerResult(intent=Intent.definition_question, text="Definition answer.")
+    answer = await answer_knowledge_question(case_id, msg)
+    return HandlerResult(intent=Intent.definition_question, text=answer)
 
 HANDLERS = {
     Intent.policy_question: handle_policy,

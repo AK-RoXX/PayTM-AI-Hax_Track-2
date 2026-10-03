@@ -15,6 +15,7 @@ import httpx
 
 from app.config import settings
 from app.services.claim_facts import extract_claim_facts
+from app.services.bill_line_extraction import extract_bill_line_proposals
 from app.services.document_service import (
     classify_document,
     classify_document_from_text,
@@ -226,6 +227,11 @@ def process_document_upload(case_id: str, user_id: str, filename: str, content: 
             p["text"] = redact_pii(p["text"])
 
         document_type = _resolve_document_type(document_type, pages)
+        bill_line_items = (
+            extract_bill_line_proposals(pages)
+            if document_type == "hospital_estimate"
+            else []
+        )
 
         chunks = split_pages_into_chunks(pages)
         vectors = embed_texts([chunk["text"] for chunk in chunks])
@@ -296,6 +302,10 @@ def process_document_upload(case_id: str, user_id: str, filename: str, content: 
                 "error_message": None,
                 "processing_provider": provider,
                 "document_type": document_type,
+                "bill_line_items": bill_line_items,
+                "bill_items_confirmed": False,
+                "bill_items_confirmed_at": None,
+                "bill_items_confirmed_by": None,
             },
         ).json()
         final_document = updated[0] if updated else document
@@ -318,6 +328,8 @@ def process_document_upload(case_id: str, user_id: str, filename: str, content: 
             "extraction_status": "done" if fact_records else "no_facts_found",
             "facts_count": len(fact_records),
             "extracted_facts": extracted_facts,
+            "bill_line_items_count": len(bill_line_items),
+            "bill_line_items_status": "needs_review" if bill_line_items else "manual_entry_required",
         }
     except Exception as error:
         message = str(error)[:500] or "Document processing failed."

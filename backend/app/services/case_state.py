@@ -31,7 +31,8 @@ FACT_COLUMNS = (
 )
 DOCUMENT_COLUMNS = (
     "id,case_id,document_type,file_name,processing_status,error_message,"
-    "page_count,processing_provider,uploaded_at"
+    "page_count,processing_provider,uploaded_at,bill_line_items,bill_items_confirmed,"
+    "bill_items_confirmed_at,bill_items_confirmed_by"
 )
 EVENT_COLUMNS = "id,case_id,event_type,actor,payload_json,occurred_at"
 
@@ -180,7 +181,14 @@ def load_case_state(case_id: str, user_id: str) -> dict:
     facts = fetch_case_facts(case_id)
     events = fetch_case_events(case_id)
     view = build_case_view(case, documents, facts, events)
-    return {"case": case, "documents": documents, "facts": facts, "events": events, "view": view}
+    return {
+        "case": case,
+        "documents": documents,
+        "facts": facts,
+        "events": events,
+        "view": view,
+        "user_id": user_id,
+    }
 
 
 # ── Fact resolution ─────────────────────────────────────────────────────────

@@ -14,6 +14,9 @@ GET /cases/{case_id}/documents
 GET /cases/{case_id}/readiness
 GET /cases/{case_id}/evidence
 GET /cases/{case_id}/policy-terms
+GET /cases/{case_id}/documents/{document_id}/bill-lines
+PUT /cases/{case_id}/documents/{document_id}/bill-lines
+GET /cases/{case_id}/policy-assessment
 POST /cases/{case_id}/policy-assessment
 POST /cases/{case_id}/ask
 POST /cases/{case_id}/claim-draft
@@ -42,9 +45,23 @@ POST /integrations/n8n/callback
 
 `possible_coverage` is an upper ceiling and `estimated_gap` is a minimum gap until a complete bill is itemised and policy rules are assessed. The case response does not imply that the insurer will pay that amount.
 
-`GET /cases/{case_id}/policy-terms` only returns product terms when an uploaded policy document has a high-confidence exact UIN and sum insured. The response includes the extracted document/page/quote and matching catalog source. It marks the result as requiring confirmation against the insured person's active schedule.
+`GET /cases/{case_id}/policy-terms` returns candidate products only when the uploaded policy document has a high-confidence exact UIN and sum insured. The response includes the extracted document/page/quote and matching catalog source. A product-level prospectus candidate still requires user confirmation against the insured person's active schedule.
 
-`POST /cases/{case_id}/policy-assessment` accepts:
+Hospital bill OCR produces draft rows only. `GET /cases/{case_id}/documents/{document_id}/bill-lines` returns those proposals, their source page and quote, the high-confidence bill total, and whether the user has confirmed a complete itemisation. The user can correct, categorise, add, or remove rows. `PUT` accepts:
+
+```json
+{
+  "confirmed_complete": false,
+  "items": [
+    {"line_id": "row-1", "description": "Room rent", "category": "room_rent", "amount": 60000, "quantity": 4, "source_page": 2, "source_quote": "Room rent 4 days ₹60,000"},
+    {"line_id": "row-2", "description": "Pharmacy", "category": "pharmacy", "amount": 40000, "quantity": null, "source_page": 3, "source_quote": "Pharmacy ₹40,000"}
+  ]
+}
+```
+
+Set `confirmed_complete` to `true` only after all rows are reviewed, every row is categorised, room/ICU day counts are entered, and the rows reconcile to the extracted total within ₹1. The server persists the reviewed itemisation against the selected case-owned bill and invalidates prior scenarios for that bill.
+
+`POST /cases/{case_id}/policy-assessment` then accepts only the policy and bill references and the user's confirmations; bill rows are read from the saved, confirmed review rather than supplied again:
 
 ```json
 {
@@ -52,16 +69,15 @@ POST /integrations/n8n/callback
   "bill_document_id": "case-owned-hospital-estimate-id",
   "policy_uin": "NIAHLIP25040V102425",
   "schedule_confirmed": true,
-  "bill_items_confirmed": true,
-  "proportionate_deduction_applicability": "unknown",
-  "line_items": [
-    {"description": "Room rent", "category": "room_rent", "amount": 60000, "quantity": 4, "source_page": 2},
-    {"description": "Pharmacy", "category": "pharmacy", "amount": 40000, "source_page": 3}
-  ]
+  "proportionate_deduction_applicability": "unknown"
 }
 ```
 
-The API requires authenticated case ownership, both documents to be processed in that case, confirmation that the active schedule matches, confirmation that the complete bill breakdown was reviewed, the UIN and sum insured to come from the same selected policy document, and line items to reconcile to the extracted bill total. Results are scenario ranges before unmodelled policy conditions. Unsupported or conflicting evidence is rejected; rules are never borrowed from another insurer.
+The API requires authenticated case ownership, both documents to be processed in that case, confirmation that the active schedule matches, a high-confidence UIN and sum insured from the same selected policy document, and a confirmed line-item review reconciled to the bill total. The deterministic result is persisted with its input snapshot, catalog version, and source document timestamps. `GET /cases/{case_id}/policy-assessment` returns the latest saved result as `current`, `stale`, or `not_calculated`; a bill edit invalidates earlier scenarios. Results are scenario ranges before unmodelled policy conditions, never a coverage confirmation, claim approval, settlement, or lending decision. Unsupported evidence is rejected; rules are never borrowed from another insurer.
+
+The result's `itemized_lines` contain the billed amount, known daily limit, modelled amount/range, bill page/quote, and product-reference title/UIN/pages plus the relevant source wording for each line. Room, boarding, and nursing rows share one daily cap; when several rows share it, the allowed amount is allocated pro rata for display. Formula explanations are generated from the checked-in catalog; source wording is separately quoted. The product-level catalog currently contains one reviewed product and does not replace policy wording, schedule, endorsements, or insurer adjudication.
+
+Apply `supabase/migrations/20261003000000_policy_scenarios.sql` before enabling bill review or saved scenarios. The migration adds JSON bill-review fields to `documents` and a case-scoped `policy_assessments` table. FastAPI writes through the service role only after verifying the authenticated case owner.
 
 ## API rules
 

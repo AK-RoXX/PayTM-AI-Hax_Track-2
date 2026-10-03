@@ -1,5 +1,6 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "catalog_version": "2026-10-03.2",
   "products": [
     {
       "product_id": "new-india-mediclaim-2024-25",
@@ -11,7 +12,13 @@
         "kind": "prospectus",
         "pages": [11, 12],
         "document_path": "knowledge_base/Prospectus New India Mediclaim Policy.pdf",
-        "scope_note": "Published product reference only. Confirm the insured person's policy schedule, plan, effective version, endorsements, and conditions before using this scenario. A prospectus is not the insured person's contract."
+        "scope_note": "Published product reference only. Confirm the insured person's policy schedule, plan, effective version, endorsements, and conditions before using this scenario. A prospectus is not the insured person's contract.",
+        "room_rent_wording": "Room rent, Boarding, DMO / RMO / CMO / RMP Charges, Nursing (Including Injection / Drugs and Intra venous fluid administration expenses), not exceeding 1% of the Sum Insured per day maximum Up to Rs. as mentioned in the below table:",
+        "room_rent_pages": [11],
+        "icu_wording": "Intensive Care Unit (ICU) / Intensive Cardiac Care Unit (ICCU), Intensivist charges, Monitor and Pulse Oxymeter expenses not exceeding 2% of the Sum Insured per day maximum Up to Rs. As mentioned in the below table:",
+        "icu_pages": [11, 12],
+        "proportionate_deduction_wording": "Proportionate Deduction is applicable on the Associate Medical Expenses, if the Insured Person opts for a higher Room than his eligible category. It shall be effected in the same proportion as the eligible rate per day bears to the actual rate per day of Room Rent. However, it is not applicable on\na. Cost of Pharmacy and Consumables\nb. Cost of Implants, Artificial Limbs and Medical Devices\nc. Cost of Diagnostics.\nProportionate Deduction shall also not be applied in respect of Hospitals which do not follow differential billing or for those expenses in which differential billing is not adopted based on the room category, as evidenced by the Hospital's schedule of charges / tariff.",
+        "proportionate_deduction_pages": [12]
       },
       "tiers": [
         {
@@ -67,11 +74,11 @@
         }
       ],
       "proportionate_deduction": {
-        "formula": "eligible_room_cost_divided_by_billed_room_cost",
+        "formula": "eligible_room_rate_per_day_divided_by_actual_room_rate_per_day",
         "applies_to": ["other_medical"],
         "exempt_categories": ["pharmacy", "consumables", "diagnostics", "implants_devices"],
         "requires_confirmed_applicability": true,
-        "source_wording_note": "The prospectus describes proportionate deduction for associated medical expenses and lists exceptions. It does not provide a computable formula for every claim scenario; this ratio is an illustrative modelling assumption, not an insurer adjudication rule."
+        "source_wording_note": "The prospectus specifies the eligible room rate per day divided by the actual room rate per day. This scenario uses the catalogued room daily limit as the eligible rate; the applicability of differential billing and other claim facts must still be confirmed by the hospital or insurer."
       },
       "not_modelled": [
         "Waiting periods and pre-existing disease rules",

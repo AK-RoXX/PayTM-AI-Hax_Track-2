@@ -70,7 +70,148 @@ export type FinancialMap = {
   possible_coverage: number;
   estimated_gap: number;
   status: string;
+  calculation_status: "sum_insured_ceiling_only" | "sum_insured_missing" | "bill_amount_missing";
+  possible_coverage_basis: string;
+  estimated_gap_basis: string;
   disclaimer: string;
+};
+
+export type PolicyBillCategory =
+  | "room_rent"
+  | "room_related"
+  | "icu"
+  | "other_medical"
+  | "pharmacy"
+  | "consumables"
+  | "diagnostics"
+  | "implants_devices";
+
+export type BillLineCategory = PolicyBillCategory | "unclassified";
+
+export type BillLineItem = {
+  line_id: string;
+  description: string;
+  category: BillLineCategory;
+  amount: number;
+  quantity: number | null;
+  source_page: number;
+  source_quote: string;
+  confidence: number;
+  extraction_status: "proposed" | "manual";
+};
+
+export type PolicyRuleSummary = {
+  status: "needs_schedule_confirmation";
+  insurer: string;
+  product_name: string;
+  product_id: string;
+  uin: string;
+  tier_id: string;
+  tier_label: string;
+  sum_insured: number;
+  room_rent_limit_per_day: number | null;
+  icu_limit_per_day: number | null;
+  room_rent_rule_explanation: string;
+  room_rent_source_quote: string;
+  room_rent_source_pages: number[];
+  icu_rule_explanation: string;
+  icu_source_quote: string;
+  icu_source_pages: number[];
+  source_title: string;
+  source_pages: number[];
+  source_kind: string;
+  scope_note: string;
+};
+
+export type PolicyCandidate = {
+  status: string;
+  policy_document_id?: string;
+  document_name?: string;
+  policy_uin?: string;
+  rule_summary?: PolicyRuleSummary;
+  next_step?: string;
+};
+
+export type PolicyTermsResponse = {
+  status: string;
+  case_id: string;
+  candidates: PolicyCandidate[];
+  notice: string;
+};
+
+export type BillLineItemsResponse = {
+  status: "needs_review" | "confirmed";
+  bill_document_id: string;
+  bill_document_name: string;
+  bill_total: number | null;
+  items_total: number;
+  confirmed_complete: boolean;
+  items: BillLineItem[];
+  review_message: string;
+};
+
+export type PolicyScenario = {
+  status: "scenario_estimate";
+  case_id: string;
+  catalog_version: string;
+  assessment_id?: string | null;
+  created_at?: string | null;
+  policy: {
+    insurer: string;
+    product_name: string;
+    product_id: string;
+    uin: string;
+    tier_id: string;
+    tier_label: string;
+    sum_insured: number;
+    source: { document_title: string; document_kind: string; uin: string; pages: number[]; document_path: string };
+    source_scope: string;
+  };
+  financial_map: {
+    hospital_bill_total: number;
+    modelled_coverage_range_before_unmodelled_terms: { minimum: number; maximum: number };
+    modelled_gap_range_before_unmodelled_terms: { minimum: number; maximum: number };
+    sum_insured_ceiling: number;
+  };
+  itemized_lines: Array<{
+    line_id: string;
+    description: string;
+    category: PolicyBillCategory;
+    billed_amount: number;
+    quantity_days: number | null;
+    daily_limit: number | null;
+    rule_explanation: string;
+    modelled_amount_before_other_terms: number;
+    amount_above_known_daily_limit: number;
+    modelled_amount_if_proportionate_deduction_applies: number;
+    modelled_amount_range: { minimum: number; maximum: number };
+    proportionate_deduction_applicable_to_line: boolean;
+    bill_evidence: { document_name: string; page_number: number; quote: string };
+    policy_rule_evidence: { document_title: string; document_kind: string; uin: string; pages: number[]; quote: string };
+  }>;
+  line_items: Array<Record<string, unknown>>;
+  proportionate_deduction: {
+    applicability: string;
+    room_cost_ratio_assumption: number;
+    eligible_room_rate_per_day: number | null;
+    actual_room_rate_per_day: number | null;
+    applies_to: string[];
+    exempt_categories: string[];
+    formula_note: string;
+  };
+  assumptions: string[];
+  unmodelled_terms: string[];
+  disclaimer: string;
+};
+
+export type PolicyAssessmentResponse = {
+  status: "current" | "stale" | "not_calculated";
+  assessment: {
+    id: string;
+    created_at: string | null;
+    source_snapshot: Record<string, string | null>;
+    result: PolicyScenario;
+  } | null;
 };
 
 export type CaseData = {
@@ -100,10 +241,3 @@ export type Readiness = {
   documents_processing: number;
   documents_failed: number;
 };
-
-export type CaseUpdateRequest = {
-  estimated_bill?: number | null;
-  hospital_name?: string | null;
-  patient_relation?: string | null;
-  status?: string | null;
-};

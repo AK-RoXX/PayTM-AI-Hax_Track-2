@@ -6,7 +6,19 @@
  * rejected. There are no hardcoded fallback values — errors are surfaced as
  * thrown exceptions so the UI can show proper error states.
  */
-import { CaseData, CaseDocument, CaseUpdateRequest, Evidence, ExtractedFact, Readiness } from './types';
+import {
+  BillLineItemsResponse,
+  BillLineItem,
+  CaseData,
+  CaseDocument,
+  CaseUpdateRequest,
+  Evidence,
+  ExtractedFact,
+  PolicyAssessmentResponse,
+  PolicyScenario,
+  PolicyTermsResponse,
+  Readiness,
+} from './types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -69,6 +81,54 @@ export const getReadiness = (id: string, token?: string) =>
 
 export const getFacts = (id: string, token?: string) =>
   request<{ items: ExtractedFact[] }>(`/cases/${id}/facts`, { token });
+
+// ─── Policy scenario / bill itemisation ───────────────────────
+
+export const getPolicyTerms = (id: string, token?: string) =>
+  request<PolicyTermsResponse>(`/cases/${encodeURIComponent(id)}/policy-terms`, { token });
+
+export const getBillLineItems = (caseId: string, documentId: string, token?: string) =>
+  request<BillLineItemsResponse>(
+    `/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/bill-lines`,
+    { token },
+  );
+
+export const saveBillLineItems = (
+  caseId: string,
+  documentId: string,
+  items: BillLineItem[],
+  confirmedComplete: boolean,
+  token?: string,
+) =>
+  request<BillLineItemsResponse>(
+    `/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/bill-lines`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ items, confirmed_complete: confirmedComplete }),
+      token,
+    },
+  );
+
+export const getPolicyAssessment = (id: string, token?: string) =>
+  request<PolicyAssessmentResponse>(
+    `/cases/${encodeURIComponent(id)}/policy-assessment`,
+    { token },
+  );
+
+export type RunPolicyAssessmentInput = {
+  policy_document_id: string;
+  bill_document_id: string;
+  policy_uin: string;
+  schedule_confirmed: boolean;
+  proportionate_deduction_applicability: 'yes' | 'no' | 'unknown';
+};
+
+export const runPolicyAssessment = (id: string, input: RunPolicyAssessmentInput, token?: string) =>
+  request<PolicyScenario>(`/cases/${encodeURIComponent(id)}/policy-assessment`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+    token,
+  });
 
 export type CaseDraft = {
   message: string;

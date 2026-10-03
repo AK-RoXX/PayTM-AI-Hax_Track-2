@@ -23,6 +23,7 @@ from app.schemas.policy import (
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "data" / "policy_catalog.json"
 RUPEE = Decimal("1")
+POLICY_CATALOG_VERSION = "2026-10-03.2"
 
 
 def _money(value: Decimal | int | float | str) -> Decimal:
@@ -37,8 +38,10 @@ def normalise_uin(value: str) -> str:
 def load_policy_catalog() -> tuple[PolicyTerms, ...]:
     """Load and validate the checked-in product terms once per process."""
     payload = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
+    if payload.get("schema_version") != 2:
         raise ValueError("Unsupported policy catalog schema version.")
+    if payload.get("catalog_version") != POLICY_CATALOG_VERSION:
+        raise ValueError("Policy catalog version does not match the engine release.")
     products = tuple(PolicyTerms.model_validate(item) for item in payload.get("products", []))
     uins = [normalise_uin(product.uin) for product in products]
     if len(uins) != len(set(uins)):
@@ -83,6 +86,17 @@ def _daily_limit(rule: Any, sum_insured: int) -> Decimal | None:
     return _money(amount)
 
 
+def _rule_explanation(rule: Any, sum_insured: int, limit_per_day: Decimal | None) -> str:
+    if rule.method == "actuals":
+        return "Billed at actuals under the product reference, subject to other policy terms."
+    calculation = f"{rule.percentage}% of ₹{sum_insured:,} sum insured per day"
+    if rule.maximum_per_day is not None:
+        calculation += f", capped at ₹{int(rule.maximum_per_day):,} per day"
+    if limit_per_day is not None:
+        calculation += f"; this tier calculates to ₹{int(limit_per_day):,} per day"
+    return calculation + "."
+
+
 def make_rule_summary(
     terms: PolicyTerms,
     tier: PolicyTierTerms,
@@ -101,6 +115,12 @@ def make_rule_summary(
         sum_insured=sum_insured,
         room_rent_limit_per_day=int(room_limit) if room_limit is not None else None,
         icu_limit_per_day=int(icu_limit) if icu_limit is not None else None,
+        room_rent_rule_explanation=_rule_explanation(tier.room_rent, sum_insured, room_limit),
+        room_rent_source_quote=terms.source.room_rent_wording,
+        room_rent_source_pages=terms.source.room_rent_pages,
+        icu_rule_explanation=_rule_explanation(tier.icu, sum_insured, icu_limit),
+        icu_source_quote=terms.source.icu_wording,
+        icu_source_pages=terms.source.icu_pages,
         source_title=terms.source.title,
         source_pages=terms.source.pages,
         source_kind=terms.source.kind,
@@ -119,11 +139,10 @@ def calculate_policy_scenario(
 ) -> dict[str, Any]:
     """Calculate capped scenario ranges from a complete, itemised bill.
 
-    Room and ICU limits are applied deterministically. The prospectus does not
-    define a universal numeric proportionate-deduction formula, so when the
-    associated-expense condition is confirmed this uses an explicit ratio
-    assumption and reports both sides of the range when applicability is
-    unknown. Other policy conditions stay unresolved.
+    Room/boarding/nursing and ICU related charges each share one daily limit.
+    Proportionate deduction uses the prospectus's eligible room-rate / actual
+    room-rate ratio; whether differential billing makes it applicable remains
+    a user-confirmed condition. Other policy conditions stay unresolved.
     """
     items = list(line_items)
     if not items:
@@ -139,19 +158,34 @@ def calculate_policy_scenario(
     room_limit = _daily_limit(tier.room_rent, sum_insured)
     icu_limit = _daily_limit(tier.icu, sum_insured)
 
-    def category_admissible(category: str, rule: Any, limit_per_day: Decimal | None) -> tuple[Decimal, dict[str, Any]]:
-        category_items = [item for item in items if item.category == category]
-        billed = totals.get(category, Decimal("0"))
-        days = sum((item.quantity or Decimal("0") for item in category_items), Decimal("0"))
-        allowed_lines = [
-            min(item.amount, limit_per_day * item.quantity)
-            if limit_per_day is not None and item.quantity is not None
-            else item.amount
-            for item in category_items
-        ]
-        allowed = sum(allowed_lines, Decimal("0"))
+    room_categories = {"room_rent", "room_related"}
+
+    def category_admissible(
+        categories: set[str],
+        group_name: str,
+        rule: Any,
+        limit_per_day: Decimal | None,
+    ) -> tuple[Decimal, dict[str, Any], dict[str, Decimal]]:
+        category_items = [item for item in items if item.category in categories]
+        billed = sum((item.amount for item in category_items), Decimal("0"))
+        day_counts = {item.quantity for item in category_items if item.quantity is not None}
+        if len(day_counts) > 1:
+            raise ValueError(
+                f"All {group_name} charge rows must use the same number of stay days so the shared daily limit can be applied accurately."
+            )
+        days = next(iter(day_counts), Decimal("0"))
+        if limit_per_day is not None and days:
+            allowed = min(billed, limit_per_day * days)
+            allowed_share = allowed / billed if billed else Decimal("1")
+            allowed_lines = {
+                item.line_id: item.amount * allowed_share for item in category_items
+            }
+        else:
+            allowed = billed
+            allowed_lines = {item.line_id: item.amount for item in category_items}
         if not billed:
             return Decimal("0"), {
+                "group": group_name,
                 "billed": 0,
                 "days": 0,
                 "billed_per_day": 0,
@@ -166,9 +200,10 @@ def calculate_policy_scenario(
                     "uin": terms.uin,
                     "pages": terms.source.pages,
                 },
-            }
+            }, {}
         per_day = billed / days if days else Decimal("0")
         return allowed, {
+            "group": group_name,
             "billed": int(_money(billed)),
             "days": float(days),
             "billed_per_day": int(_money(per_day)) if days else None,
@@ -185,20 +220,32 @@ def calculate_policy_scenario(
             },
             "line_calculations": [
                 {
+                    "line_id": item.line_id,
                     "description": item.description,
+                    "category": item.category,
                     "billed_amount": int(_money(item.amount)),
                     "days": float(item.quantity) if item.quantity is not None else None,
-                    "modelled_amount_before_proportionate_deduction": int(_money(line_allowed)),
+                    "modelled_amount_before_proportionate_deduction": int(_money(allowed_lines[item.line_id])),
                     "bill_page": item.source_page,
                 }
-                for item, line_allowed in zip(category_items, allowed_lines)
+                for item in category_items
             ],
-        }
+        }, allowed_lines
 
-    room_allowed, room_detail = category_admissible("room_rent", tier.room_rent, room_limit)
-    icu_allowed, icu_detail = category_admissible("icu", tier.icu, icu_limit)
-    if totals.get("room_rent") and room_detail["billed"]:
-        room_ratio = min(Decimal("1"), room_allowed / totals["room_rent"])
+    room_allowed, room_detail, room_allowed_by_line = category_admissible(
+        room_categories, "room, boarding, and nursing", tier.room_rent, room_limit
+    )
+    icu_allowed, icu_detail, icu_allowed_by_line = category_admissible(
+        {"icu"}, "ICU and associated daily-limit", tier.icu, icu_limit
+    )
+    actual_room_rent = totals.get("room_rent", Decimal("0"))
+    room_rent_days = max(
+        (item.quantity or Decimal("0") for item in items if item.category == "room_rent"),
+        default=Decimal("0"),
+    )
+    if actual_room_rent and room_rent_days and room_limit is not None:
+        actual_room_rate_per_day = actual_room_rent / room_rent_days
+        room_ratio = min(Decimal("1"), room_limit / actual_room_rate_per_day)
     else:
         room_ratio = Decimal("1")
 
@@ -209,10 +256,16 @@ def calculate_policy_scenario(
     base_total = Decimal("0")
     proportionately_adjusted_total = Decimal("0")
     for category, amount in totals.items():
-        if category == "room_rent":
-            base = room_allowed
+        if category in room_categories:
+            base = sum(
+                (room_allowed_by_line[item.line_id] for item in items if item.category == category),
+                Decimal("0"),
+            )
         elif category == "icu":
-            base = icu_allowed
+            base = sum(
+                (icu_allowed_by_line[item.line_id] for item in items if item.category == category),
+                Decimal("0"),
+            )
         else:
             base = amount
 
@@ -236,6 +289,103 @@ def calculate_policy_scenario(
                     "pages": terms.source.pages,
                 },
                 "source_pages": source_pages,
+            }
+        )
+
+    itemized_lines: list[dict[str, Any]] = []
+    for item in items:
+        if item.category in room_categories:
+            rule = tier.room_rent
+            daily_limit = room_limit
+            modelled_before_proportionate = room_allowed_by_line[item.line_id]
+            amount_over_limit = item.amount - modelled_before_proportionate
+        elif item.category == "icu":
+            rule = tier.icu
+            daily_limit = icu_limit
+            modelled_before_proportionate = icu_allowed_by_line[item.line_id]
+            amount_over_limit = item.amount - modelled_before_proportionate
+        else:
+            rule = None
+            daily_limit = None
+            amount_over_limit = Decimal("0")
+            modelled_before_proportionate = item.amount
+
+        proportional = (
+            item.category in associated_categories
+            and item.category not in exempt_categories
+        )
+        if item.category in room_categories or item.category == "icu":
+            proportionate_amount = modelled_before_proportionate
+        elif proportional:
+            proportionate_amount = item.amount * room_ratio
+        else:
+            proportionate_amount = modelled_before_proportionate
+
+        if item.category in room_categories or item.category == "icu":
+            lower_line = upper_line = modelled_before_proportionate
+        elif proportional and proportionate_deduction_applicability == "yes":
+            lower_line = upper_line = proportionate_amount
+        elif proportional and proportionate_deduction_applicability == "no":
+            lower_line = upper_line = item.amount
+        elif proportional:
+            lower_line, upper_line = proportionate_amount, item.amount
+        else:
+            lower_line = upper_line = item.amount
+
+        rule_source = {
+            "document_title": terms.source.title,
+            "document_kind": terms.source.kind,
+            "uin": terms.uin,
+            "pages": (
+                terms.source.room_rent_pages
+                if item.category in room_categories
+                else terms.source.icu_pages
+                if item.category == "icu"
+                else terms.source.proportionate_deduction_pages
+                if proportional or item.category in exempt_categories
+                else terms.source.pages
+            ),
+            "quote": (
+                terms.source.room_rent_wording
+                if item.category in room_categories
+                else terms.source.icu_wording
+                if item.category == "icu"
+                else terms.source.proportionate_deduction_wording
+                if proportional or item.category in exempt_categories
+                else ""
+            ),
+        }
+        itemized_lines.append(
+            {
+                "line_id": item.line_id,
+                "description": item.description,
+                "category": item.category,
+                "billed_amount": int(_money(item.amount)),
+                "quantity_days": float(item.quantity) if item.quantity is not None else None,
+                "daily_limit": int(daily_limit) if daily_limit is not None else None,
+                "rule_explanation": (
+                    _rule_explanation(rule, sum_insured, daily_limit)
+                    if rule is not None
+                    else (
+                        "This category is exempt from the catalogued room proportionate-deduction rule."
+                        if item.category in exempt_categories
+                        else "No separate sublimit for this category is modelled here."
+                    )
+                ),
+                "modelled_amount_before_other_terms": int(_money(modelled_before_proportionate)),
+                "amount_above_known_daily_limit": int(_money(amount_over_limit)),
+                "modelled_amount_if_proportionate_deduction_applies": int(_money(proportionate_amount)),
+                "modelled_amount_range": {
+                    "minimum": int(_money(lower_line)),
+                    "maximum": int(_money(upper_line)),
+                },
+                "proportionate_deduction_applicable_to_line": proportional,
+                "bill_evidence": {
+                    "document_name": bill_document_name,
+                    "page_number": item.source_page,
+                    "quote": item.source_quote,
+                },
+                "policy_rule_evidence": rule_source,
             }
         )
 
@@ -291,6 +441,7 @@ def calculate_policy_scenario(
         "room_rent": room_detail,
         "icu": icu_detail,
         "line_items": adjusted_line_items,
+        "itemized_lines": itemized_lines,
         "proportionate_deduction": {
             "applicability": prop_state,
             "room_cost_ratio_assumption": float(room_ratio.quantize(Decimal("0.0001"))),
@@ -300,6 +451,8 @@ def calculate_policy_scenario(
         },
         "assumptions": [
             "All line items are complete, accurate, and otherwise eligible before applying the listed room/ICU limits.",
+            "Room, boarding, and nursing charges share the room daily limit; ICU and associated daily-limit charges share the ICU limit.",
+            "When several charges share a daily limit, the allowed group amount is allocated across those rows in proportion to billed amounts for display.",
             "The same UIN and sum-insured tier apply to the insured person's active policy schedule and endorsements.",
             "An unknown proportionate-deduction condition is represented as a range.",
             "The output is before co-payment, deductible, waiting-period, exclusion, prior-claim, and other unmodelled adjustments.",

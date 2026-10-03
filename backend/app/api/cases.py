@@ -22,7 +22,7 @@ from app.schemas.case import (
     EvidenceResponse,
     ReadinessResponse,
 )
-from app.schemas.policy import PolicyAssessmentRequest
+from app.schemas.policy import BillLineItemsReviewRequest, PolicyAssessmentRequest
 from app.services import case_state
 from app.services.case_state import load_case_state
 from app.services.document_pipeline import (
@@ -35,7 +35,10 @@ from app.services.document_pipeline import (
 from app.services.policy_assessment import (
     PolicyAssessmentError,
     assess_policy_for_case,
+    get_bill_line_items,
+    get_policy_assessment,
     get_policy_terms_for_case,
+    save_bill_line_items,
 )
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -407,6 +410,50 @@ async def policy_terms(case_id: str, authorization: str | None = Header(default=
     return await run_in_threadpool(get_policy_terms_for_case, state)
 
 
+@router.get("/{case_id}/documents/{document_id}/bill-lines")
+async def get_bill_lines(
+    case_id: str,
+    document_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Return the case-owned bill's extracted rows for user review."""
+    state = await _load_state(case_id, authorization)
+    try:
+        return await run_in_threadpool(get_bill_line_items, state, document_id)
+    except PolicyAssessmentError as error:
+        raise HTTPException(error.status_code, error.detail) from error
+
+
+@router.put("/{case_id}/documents/{document_id}/bill-lines")
+async def put_bill_lines(
+    case_id: str,
+    document_id: str,
+    payload: BillLineItemsReviewRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Save edited bill rows and optionally confirm a reconciled complete itemisation."""
+    state = await _load_state(case_id, authorization)
+    try:
+        return await run_in_threadpool(
+            save_bill_line_items, state, document_id, payload, state["user_id"]
+        )
+    except PolicyAssessmentError as error:
+        raise HTTPException(error.status_code, error.detail) from error
+
+
+@router.get("/{case_id}/policy-assessment")
+async def get_saved_policy_assessment(
+    case_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Load the newest durable policy scenario and identify stale inputs."""
+    state = await _load_state(case_id, authorization)
+    try:
+        return await run_in_threadpool(get_policy_assessment, state)
+    except PolicyAssessmentError as error:
+        raise HTTPException(error.status_code, error.detail) from error
+
+
 @router.post("/{case_id}/policy-assessment")
 async def policy_assessment(
     case_id: str,
@@ -416,7 +463,9 @@ async def policy_assessment(
     """Calculate a deterministic, case-scoped scenario from confirmed bill inputs."""
     state = await _load_state(case_id, authorization)
     try:
-        return await run_in_threadpool(assess_policy_for_case, state, payload)
+        return await run_in_threadpool(
+            assess_policy_for_case, state, payload, state["user_id"]
+        )
     except PolicyAssessmentError as error:
         raise HTTPException(error.status_code, error.detail) from error
 

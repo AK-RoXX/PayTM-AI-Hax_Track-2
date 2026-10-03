@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PolicyBillCategory = Literal[
     "room_rent",
+    "room_related",
     "icu",
     "other_medical",
     "pharmacy",
@@ -14,6 +15,7 @@ PolicyBillCategory = Literal[
     "diagnostics",
     "implants_devices",
 ]
+BillLineCategory = PolicyBillCategory | Literal["unclassified"]
 
 
 class DailyLimitRule(BaseModel):
@@ -63,10 +65,16 @@ class PolicySource(BaseModel):
     pages: list[int] = Field(min_length=1)
     document_path: str
     scope_note: str
+    room_rent_wording: str
+    room_rent_pages: list[int] = Field(min_length=1)
+    icu_wording: str
+    icu_pages: list[int] = Field(min_length=1)
+    proportionate_deduction_wording: str
+    proportionate_deduction_pages: list[int] = Field(min_length=1)
 
 
 class ProportionateDeductionTerms(BaseModel):
-    formula: Literal["eligible_room_cost_divided_by_billed_room_cost"]
+    formula: Literal["eligible_room_rate_per_day_divided_by_actual_room_rate_per_day"]
     applies_to: list[PolicyBillCategory]
     exempt_categories: list[PolicyBillCategory]
     requires_confirmed_applicability: bool
@@ -89,17 +97,19 @@ class PolicyTerms(BaseModel):
 class PolicyBillLineItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    line_id: str = Field(min_length=1, max_length=80)
     description: str = Field(min_length=1, max_length=180)
     category: PolicyBillCategory
     amount: Decimal = Field(gt=0, le=100000000)
     quantity: Decimal | None = Field(default=None, gt=0, le=365)
     source_page: int = Field(ge=1)
+    source_quote: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")
     def require_days_for_daily_limits(self):
-        if self.category in {"room_rent", "icu"} and self.quantity is None:
-            raise ValueError("Room and ICU line items need the number of days.")
-        if self.category not in {"room_rent", "icu"} and self.quantity is not None:
+        if self.category in {"room_rent", "room_related", "icu"} and self.quantity is None:
+            raise ValueError("Room, related daily-limit, and ICU line items need the number of days.")
+        if self.category not in {"room_rent", "room_related", "icu"} and self.quantity is not None:
             raise ValueError("Quantity is only supported for room and ICU day counts.")
         return self
 
@@ -111,9 +121,52 @@ class PolicyAssessmentRequest(BaseModel):
     bill_document_id: str = Field(min_length=1)
     policy_uin: str = Field(min_length=5, max_length=40)
     schedule_confirmed: bool
-    bill_items_confirmed: bool
     proportionate_deduction_applicability: Literal["yes", "no", "unknown"] = "unknown"
-    line_items: list[PolicyBillLineItem] = Field(min_length=1, max_length=100)
+
+
+class BillLineItemReviewInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    line_id: str = Field(min_length=1, max_length=80)
+    description: str = Field(min_length=1, max_length=180)
+    category: BillLineCategory
+    amount: Decimal = Field(gt=0, le=100000000)
+    quantity: Decimal | None = Field(default=None, gt=0, le=365)
+    source_page: int = Field(ge=1)
+    source_quote: str = Field(default="", max_length=500)
+    confidence: Decimal = Field(default=Decimal("1"), ge=0, le=1)
+    extraction_status: Literal["proposed", "manual"] = "manual"
+
+    @model_validator(mode="after")
+    def quantity_only_for_daily_limited_categories(self):
+        if self.category not in {"room_rent", "room_related", "icu"} and self.quantity is not None:
+            raise ValueError("Stay-day quantity is only supported for room, related daily-limit, and ICU charges.")
+        return self
+
+
+class BillLineItemsReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[BillLineItemReviewInput] = Field(min_length=1, max_length=100)
+    confirmed_complete: bool
+
+    @model_validator(mode="after")
+    def require_unique_line_ids(self):
+        identifiers = [item.line_id for item in self.items]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Bill line identifiers must be unique.")
+        return self
+
+
+class BillLineItemsResponse(BaseModel):
+    status: Literal["needs_review", "confirmed"]
+    bill_document_id: str
+    bill_document_name: str
+    bill_total: int | None = None
+    items_total: Decimal
+    confirmed_complete: bool
+    items: list[BillLineItemReviewInput]
+    review_message: str
 
 
 class PolicyRuleSummary(BaseModel):
@@ -127,6 +180,12 @@ class PolicyRuleSummary(BaseModel):
     sum_insured: int
     room_rent_limit_per_day: int | None = None
     icu_limit_per_day: int | None = None
+    room_rent_rule_explanation: str
+    room_rent_source_quote: str
+    room_rent_source_pages: list[int]
+    icu_rule_explanation: str
+    icu_source_quote: str
+    icu_source_pages: list[int]
     source_title: str
     source_pages: list[int]
     source_kind: str

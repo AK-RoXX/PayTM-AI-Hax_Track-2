@@ -7,10 +7,6 @@ import {
   Bell,
   Upload,
   CheckCircle2,
-  Landmark,
-  ShieldAlert,
-  ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { setReminder } from "@/lib/api";
 import type { FinancialMap } from "@/lib/types";
@@ -35,7 +31,6 @@ export function NextActionCard({
 }) {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
-  const [showLoanModal, setShowLoanModal] = useState(false);
 
   const remind = async () => {
     setPending(true);
@@ -81,7 +76,7 @@ export function NextActionCard({
 
         {nothingMissing ? (
           <p className="muted" style={{ margin: "0 0 16px", fontSize: 14 }}>
-            Every required document is verified by AI. Nothing is blocking your cashless settlement.
+            All documents we currently request are on file. Your insurer may still ask for more information or make its own coverage decision.
           </p>
         ) : (
           <p className="muted" style={{ margin: "0 0 16px", fontSize: 14 }}>
@@ -132,95 +127,31 @@ export function NextActionCard({
         )}
       </section>
 
-      {/* Screen 7: Explore Financing / Paytm Personal Loan for Confirmed Gap */}
+      {/* Planning amounts are not loan recommendations or insurer decisions. */}
       {gap > 0 && (
         <section
           className="card"
           style={{
-            border: "1px solid #fed7aa",
-            background: "#fffaf5",
+            border: "1px solid #bfdbfe",
+            background: "#f8fbff",
             padding: "20px 22px",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 14,
-            }}
-          >
-            <div style={{ maxWidth: 520 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span className="label" style={{ color: "#c2410c" }}>Explore Financing</span>
-                <span className="pill pill-orange">Gap Coverage</span>
-              </div>
-              <h4 style={{ margin: "4px 0", fontSize: 17, fontWeight: 700, color: "#9a3412" }}>
-                You have a confirmed gap of {money(gap)}
-              </h4>
-              <p style={{ margin: "4px 0 12px", fontSize: 13, color: "#78350f" }}>
-                Hospital bill estimate is {money(estimate)}. You can explore Paytm instant financing options to cover the out-of-pocket remaining amount with 0 pre-closure charges.
-              </p>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: "#92400e" }}>
-                <span>✓ Instant fund release</span>
-                <span>✓ No impact on insurance claim</span>
-                <span>✓ 100% paperless &amp; online</span>
-              </div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "#dbeafe", color: "#0369a1", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              <ArrowRight size={17} />
             </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => setShowLoanModal(true)}
-                className="btn btn-paytm"
-                style={{ gap: 6, borderRadius: 12 }}
-              >
-                <Landmark size={15} />
-                Check Loan Eligibility
-              </button>
-              <span style={{ fontSize: 11, color: "#a16207" }}>
-                Recommended: Paytm Personal Loan
-              </span>
+            <div>
+              <div className="label" style={{ color: "#0369a1" }}>Plan the next step</div>
+              <h4 style={{ margin: "4px 0", fontSize: 16, fontWeight: 750, color: "#0f2e59" }}>
+                Current minimum planning gap: {money(gap)}
+              </h4>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "#475569", lineHeight: 1.55 }}>
+                This is based on a {money(estimate)} bill and the sum-insured ceiling only. It is not a confirmed patient liability or loan recommendation. Review the policy scenario in the Money Map before making a financial decision.
+              </p>
+              <a href="#money-map" style={{ display: "inline-block", marginTop: 9, fontSize: 12, fontWeight: 700, color: "#0066f5" }}>Review Money Map →</a>
             </div>
           </div>
-
-          {/* Simple Loan Modal */}
-          {showLoanModal && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: "16px",
-                background: "#ffffff",
-                border: "1px solid #f97316",
-                borderRadius: 12,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 700, color: "#0f172a" }}>Paytm Instant Personal Loan</div>
-                <button
-                  type="button"
-                  onClick={() => setShowLoanModal(false)}
-                  style={{ background: "none", border: 0, color: "#64748b", cursor: "pointer", fontSize: 16 }}
-                >
-                  ✕
-                </button>
-              </div>
-              <p style={{ fontSize: 13, color: "#475569", margin: "6px 0 12px" }}>
-                Pre-approved medical assistance credit up to ₹1,50,000 at competitive interest rates for hospital emergencies.
-              </p>
-              <a
-                href="https://paytm.com/loans"
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary btn-sm"
-                style={{ display: "inline-flex", gap: 6 }}
-              >
-                Apply via Paytm App <ChevronRight size={14} />
-              </a>
-            </div>
-          )}
         </section>
       )}
     </div>

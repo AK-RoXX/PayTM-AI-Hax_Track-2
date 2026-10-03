@@ -16,5 +16,7 @@ Make a stressful journey feel calm, guided and actionable. The product is mobile
 ## UI labels
 Use “possible coverage”, “planning estimate”, “needs verification”, and “final decision by insurer”. Do not show “approved coverage” unless returned by a trusted partner API.
 
+`FinancialMap` also owns the policy-scenario review: select a case-owned policy and bill, edit page-cited OCR row proposals, reconcile to the extracted bill total, confirm the active schedule, and request a deterministic policy scenario. Show item-level bill and policy evidence, the saved scenario's current/stale status, and its unmodelled terms. A sum-insured ceiling or modelled gap is not insurer approval, patient liability, or a loan recommendation.
+
 ## Demo states
 Seed a complete happy path plus missing-document and pending-claim states. Provide graceful loading/error states and text input fallback if voice fails.
