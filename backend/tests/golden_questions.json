@@ -1,0 +1,159 @@
+{
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q01",
+      "question": "Is inpatient hospitalization covered?",
+      "expected_page": 6,
+      "expected_keyword": "inpatient hospitalization",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q02",
+      "question": "What is the room rent limit?",
+      "expected_page": 9,
+      "expected_keyword": "5,000",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q03",
+      "question": "room rent cover hoga?",
+      "expected_page": 9,
+      "expected_keyword": "5,000",
+      "should_abstain": false,
+      "language": "hinglish"
+    },
+    {
+      "id": "q04",
+      "question": "Mummy ka room rent kitna cover hoga?",
+      "expected_page": 9,
+      "expected_keyword": "5,000",
+      "should_abstain": false,
+      "language": "hinglish"
+    },
+    {
+      "id": "q05",
+      "question": "What is the waiting period for pre-existing diseases?",
+      "expected_page": 11,
+      "expected_keyword": "2 year",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q06",
+      "question": "Is dental treatment covered?",
+      "expected_page": 13,
+      "expected_keyword": "dental",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q07",
+      "question": "What documents are needed for a claim?",
+      "expected_page": 15,
+      "expected_keyword": "discharge summary",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q08",
+      "question": "What is a co-pay?",
+      "expected_page": null,
+      "expected_keyword": "out-of-pocket",
+      "should_abstain": false,
+      "language": "english",
+      "dataset": "financial_knowledge"
+    },
+    {
+      "id": "q09",
+      "question": "Kya loan lena chahiye?",
+      "expected_page": null,
+      "expected_keyword": "insurance",
+      "should_abstain": false,
+      "language": "hinglish"
+    },
+    {
+      "id": "q10",
+      "question": "What is the sum insured?",
+      "expected_page": 1,
+      "expected_keyword": "5,00,000",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q11_abstain",
+      "question": "Does this policy cover my car accident?",
+      "should_abstain": true,
+      "language": "english"
+    },
+    {
+      "id": "q12_abstain",
+      "question": "Can I get a refund on my premium?",
+      "should_abstain": true,
+      "language": "english"
+    },
+    {
+      "id": "q13_abstain",
+      "question": "Which stocks should I buy?",
+      "should_abstain": true,
+      "language": "english"
+    },
+    {
+      "id": "q14_abstain",
+      "question": "What is the doctor's personal phone number?",
+      "should_abstain": true,
+      "language": "english"
+    },
+    {
+      "id": "q15",
+      "question": "Is the ICU covered?",
+      "expected_page": 9,
+      "expected_keyword": "ICU",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q16",
+      "question": "How do I file a cashless claim?",
+      "expected_page": 15,
+      "expected_keyword": "TPA",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q17",
+      "question": "claim kaise kare?",
+      "expected_page": 15,
+      "expected_keyword": "TPA",
+      "should_abstain": false,
+      "language": "hinglish"
+    },
+    {
+      "id": "q18",
+      "question": "Is cosmetic surgery covered?",
+      "expected_page": 13,
+      "expected_keyword": "cosmetic",
+      "should_abstain": false,
+      "language": "english"
+    },
+    {
+      "id": "q19",
+      "question": "What is the difference between cashless and reimbursement?",
+      "expected_page": null,
+      "expected_keyword": "cashless",
+      "should_abstain": false,
+      "language": "english",
+      "dataset": "financial_knowledge"
+    },
+    {
+      "id": "q20",
+      "question": "Discharge summary sign kya hoti hai?",
+      "expected_page": 15,
+      "expected_keyword": "discharge summary",
+      "should_abstain": false,
+      "language": "hinglish"
+    }
+  ]
+}
