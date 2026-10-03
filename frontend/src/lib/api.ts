@@ -145,3 +145,21 @@ export type DocumentSummary = Pick<
 
 export const listDocuments = (id: string, token?: string) =>
   request<{ items: DocumentSummary[] }>(`/cases/${id}/documents`, { token });
+
+export type ChatMessage = {
+  id: string;
+  sender: 'user' | 'assistant';
+  text: string;
+  timestamp: string | null;
+  abstained?: boolean;
+  evidence?: Array<{
+    document_name: string;
+    page_number: number | null;
+    quote: string;
+    confidence: number;
+  }>;
+};
+
+export const listMessages = (id: string, token?: string) =>
+  request<{ items: ChatMessage[] }>(`/cases/${id}/messages`, { token });
+

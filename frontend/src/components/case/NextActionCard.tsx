@@ -52,8 +52,8 @@ export function NextActionCard({
     }
   };
 
-  const gap = financialMap.estimated_gap || 40000;
-  const estimate = financialMap.hospital_estimate || 300000;
+  const gap = financialMap.estimated_gap || 0;
+  const estimate = financialMap.hospital_estimate || 0;
   const nothingMissing = missingCount === 0;
 
   return (
@@ -76,7 +76,7 @@ export function NextActionCard({
           className="heading"
           style={{ fontSize: 20, margin: "4px 0 8px", color: "var(--paytm-navy)" }}
         >
-          {action || "Submit Stamped Discharge Summary"}
+          {action || "Upload documents to get started"}
         </h3>
 
         {nothingMissing ? (

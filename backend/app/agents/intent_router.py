@@ -338,6 +338,12 @@ def precondition_message(r: RouteResult, state: dict) -> str | None:
 async def handle_message(case_id: str, msg: str, state: dict) -> dict:
     import asyncio
     
+    view = state.get("view", {})
+    base_response = {
+        "next_best_action": view.get("next_best_action", ""),
+        "readiness_score": view.get("readiness_score", 0),
+    }
+
     r = await route(msg, state)
     
     if r.needs_clarification:
@@ -346,8 +352,7 @@ async def handle_message(case_id: str, msg: str, state: dict) -> dict:
             "abstained": True,
             "evidence": [],
             "source": r.source,
-            "next_best_action": state["view"]["next_best_action"],
-            "readiness_score": state["view"]["readiness_score"]
+            **base_response,
         }
         
     blocked = precondition_message(r, state)
@@ -357,8 +362,7 @@ async def handle_message(case_id: str, msg: str, state: dict) -> dict:
             "abstained": True,
             "evidence": [],
             "source": "precondition",
-            "next_best_action": state["view"]["next_best_action"],
-            "readiness_score": state["view"]["readiness_score"]
+            **base_response,
         }
         
     results = await asyncio.gather(
@@ -373,35 +377,35 @@ async def handle_message(case_id: str, msg: str, state: dict) -> dict:
             "abstained": True,
             "evidence": [],
             "source": "error",
-            "next_best_action": state["view"]["next_best_action"],
-            "readiness_score": state["view"]["readiness_score"]
+            **base_response,
         }
         
     combined_text = "\n\n".join([x.text for x in ok if x.text])
     
-    # Layer 3 JSON Structure
-    financial_map = state.get("view", {}).get("financial_map", {})
-    evidence_drawer = []
-    
+    evidence_items = []
     for x in ok:
         if hasattr(x, 'evidence') and x.evidence:
-            evidence_drawer.extend(x.evidence)
+            for ev in x.evidence:
+                evidence_items.append({
+                    "claim": ev.get("quote", "")[:160],
+                    "document_name": ev.get("document_name", ""),
+                    "page_number": ev.get("page_number"),
+                    "quote": ev.get("quote", ""),
+                    "confidence": ev.get("confidence", 0),
+                })
             
-    # If the policy/status handler abstained, we mark couldnt_verify
     couldnt_verify = any(x.status == "abstained" for x in ok)
     if couldnt_verify and not combined_text:
         combined_text = "I couldn't verify this information from your uploaded documents."
     
-    layer3_json = {
-        "headline": combined_text,
-        "financial_map": financial_map,
-        "evidence_drawer": evidence_drawer,
-        "readiness": state.get("view", {}).get("readiness_score", 0),
-        "next_step": state.get("view", {}).get("next_best_action", ""),
-        "couldnt_verify": couldnt_verify,
-        "source_intents": [i.value for i in r.intents],
-        "route_source": r.source
+    cache_key = get_cache_key(msg, state)
+    response = {
+        "answer": combined_text,
+        "abstained": couldnt_verify,
+        "evidence": evidence_items,
+        "source": r.source,
+        **base_response,
     }
     
-    CACHE[cache_key] = layer3_json
-    return layer3_json
+    CACHE[cache_key] = response
+    return response

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, FileText, ArrowRight, ShieldCheck, AlertCircle, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, ArrowRight, ShieldCheck, AlertCircle, Clock, PieChart } from "lucide-react";
 import type { CaseData } from "@/lib/types";
 
 const money = (x: number) =>
@@ -15,16 +15,49 @@ export function FinancialMap({ data }: { data: CaseData }) {
   const [accordionOpen, setAccordionOpen] = useState(true);
   const f = data.financial_map;
 
-  // Use actual figures or fallback to the authentic numbers from the UI mockup
-  const totalBill = f.hospital_estimate || 300000;
-  const approved = f.possible_coverage || 210000;
-  const outOfPocket = f.estimated_gap || 40000;
-  const underAssessment = Math.max(0, totalBill - approved - outOfPocket) || 50000;
+  // Use only real data from case state — no hardcoded fallbacks
+  const totalBill = f.hospital_estimate || 0;
+  const approved = f.possible_coverage || 0;
+  const outOfPocket = f.estimated_gap || 0;
+  const underAssessment = Math.max(0, totalBill - approved - outOfPocket);
+
+  // If no financial data exists, show empty state
+  if (totalBill === 0) {
+    return (
+      <section className="card" id="money-map" style={{ padding: "26px" }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="label" style={{ color: "#0066f5" }}>Paytm Money Map</span>
+          </div>
+          <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
+            Money Map
+          </h2>
+        </div>
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: 14,
+            border: "1px dashed #cbd5e1",
+          }}
+        >
+          <PieChart size={28} style={{ color: "#94a3b8", margin: "0 auto 8px" }} />
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+            No financial data yet
+          </p>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            Upload your hospital bill and insurance policy to see your coverage breakdown.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   // Percentages for the Donut / Progress Bar
-  const pctApproved = Math.round((approved / totalBill) * 100) || 70;
-  const pctOutOfPocket = Math.round((outOfPocket / totalBill) * 100) || 13;
-  const pctUnderAssessment = Math.round((underAssessment / totalBill) * 100) || 17;
+  const pctApproved = totalBill > 0 ? Math.round((approved / totalBill) * 100) : 0;
+  const pctOutOfPocket = totalBill > 0 ? Math.round((outOfPocket / totalBill) * 100) : 0;
+  const pctUnderAssessment = totalBill > 0 ? Math.round((underAssessment / totalBill) * 100) : 0;
 
   // SVG Donut calculations (radius 60, circumference ~377)
   const radius = 54;
@@ -37,26 +70,15 @@ export function FinancialMap({ data }: { data: CaseData }) {
   const offsetOutOfPocket = -strokeApproved;
   const offsetUnderAssessment = -(strokeApproved + strokeOutOfPocket);
 
-  const breakdownItems = [
-    {
-      title: "Room rent adjustment",
-      amount: 20000,
-      source: "Policy Document · Page 18",
-      quote: "Room rent shall be restricted to maximum of ₹5,000 per day...",
-    },
-    {
-      title: "Non-payable items",
-      amount: 10000,
-      source: "Hospital Bill · Page 4",
-      quote: "Consumables, administrative charges and toiletries are non-payable.",
-    },
-    {
-      title: "Deductible",
-      amount: 10000,
-      source: "Policy Document · Page 21",
-      quote: "Standard policy deductible applies on first hospitalization per year.",
-    },
-  ];
+  // Build breakdown from real extracted facts with money values
+  const breakdownItems = (data.facts || [])
+    .filter((fact) => fact.value_type === "money" && fact.value_json !== null && fact.source_quote)
+    .map((fact) => ({
+      title: fact.label || fact.fact_key.replaceAll("_", " "),
+      amount: Number(fact.value_json) || 0,
+      source: `${fact.document_name || "Document"}${fact.source_page ? " · Page " + fact.source_page : ""}`,
+      quote: fact.source_quote,
+    }));
 
   return (
     <section className="card" id="money-map" style={{ padding: "26px" }}>
@@ -298,7 +320,8 @@ export function FinancialMap({ data }: { data: CaseData }) {
         </div>
       </div>
 
-      {/* Accordion "Why ₹40,000?" (From Screen 4 & Screen 3 in Application UI.png) */}
+      {/* Accordion "Why ₹X?" — only shown when we have real breakdown facts */}
+      {outOfPocket > 0 && breakdownItems.length > 0 && (
       <div
         style={{
           border: "1px solid #e2e8f0",
@@ -420,6 +443,7 @@ export function FinancialMap({ data }: { data: CaseData }) {
           </div>
         )}
       </div>
+      )}
 
       <p className="muted" style={{ fontSize: 12, margin: "14px 0 0", textAlign: "center" }}>
         {f.disclaimer ||

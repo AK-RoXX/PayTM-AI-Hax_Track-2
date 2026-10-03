@@ -24,54 +24,41 @@ export function CaseTimeline({
   events: TimelineEvent[];
   caseId?: string;
 }) {
-  // If no dynamic events exist yet, use the authentic sample timeline from Screen 6 of Application UI.png
-  const displayEvents =
-    events && events.length > 0
-      ? events
-      : [
-          {
-            id: "ev-1",
-            title: "Claim Registered",
-            detail: "Initial claim intimation acknowledged by TPA",
-            occurred_at: "Oct 1, 10:42 AM",
-            status: "complete" as const,
-          },
-          {
-            id: "ev-2",
-            title: "Cashless Request Submitted",
-            detail: "Sent to Star Health TPA desk with hospital estimation",
-            occurred_at: "Oct 1, 11:20 AM",
-            status: "complete" as const,
-          },
-          {
-            id: "ev-3",
-            title: "₹2,00,000 Approved",
-            detail: "Initial cashless authorization issued",
-            occurred_at: "Oct 1, 12:15 PM",
-            status: "complete" as const,
-          },
-          {
-            id: "ev-4",
-            title: "Final Bill Submitted",
-            detail: "₹3,00,000 bill submitted at hospital billing counter",
-            occurred_at: "Oct 2, 09:20 AM",
-            status: "complete" as const,
-          },
-          {
-            id: "ev-5",
-            title: "Additional Document Requested",
-            detail: "Insurer requested stamped discharge summary for final cashless settlement",
-            occurred_at: "Oct 2, 11:45 AM",
-            status: "attention" as const,
-          },
-          {
-            id: "ev-6",
-            title: "Waiting for Discharge Summary",
-            detail: "Required for ₹1,00,000 final approval",
-            occurred_at: "Currently pending",
-            status: "pending" as const,
-          },
-        ];
+  // Display actual timeline events from the case state — no hardcoded fallbacks
+  const displayEvents = events || [];
+
+  if (displayEvents.length === 0) {
+    return (
+      <section className="card" style={{ padding: "26px" }}>
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="label" style={{ color: "#0066f5" }}>Claim Tracking</span>
+            <span className="pill pill-blue">Live Status</span>
+          </div>
+          <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
+            Claim Status
+          </h2>
+        </div>
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: 14,
+            border: "1px dashed #cbd5e1",
+          }}
+        >
+          <Clock size={28} style={{ color: "#94a3b8", margin: "0 auto 8px" }} />
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+            No activity yet
+          </p>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            Upload documents or start a conversation to generate timeline events.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="card" style={{ padding: "26px" }}>
@@ -230,37 +217,39 @@ export function CaseTimeline({
         })}
       </div>
 
-      {/* Discharge Summary Pending Alert (From Screen 6 in Application UI.png) */}
-      <div
-        style={{
-          marginTop: 20,
-          background: "#eff6ff",
-          border: "1.5px solid #bfdbfe",
-          borderRadius: 16,
-          padding: "16px 20px",
-        }}
-      >
-        <p
+      {/* Upload prompt — only shown when there are pending/attention events */}
+      {displayEvents.some((ev) => ev.status === "attention" || ev.status === "pending") && (
+        <div
           style={{
-            fontSize: 13.5,
-            color: "#1e3a8a",
-            fontWeight: 500,
-            margin: "0 0 14px",
-            lineHeight: 1.5,
+            marginTop: 20,
+            background: "#eff6ff",
+            border: "1.5px solid #bfdbfe",
+            borderRadius: 16,
+            padding: "16px 20px",
           }}
         >
-          Your discharge summary is available on your phone, but hasn&apos;t been received by the claim system yet.
-        </p>
+          <p
+            style={{
+              fontSize: 13.5,
+              color: "#1e3a8a",
+              fontWeight: 500,
+              margin: "0 0 14px",
+              lineHeight: 1.5,
+            }}
+          >
+            There are pending items that need your attention. Upload required documents to proceed.
+          </p>
 
-        <Link
-          href={caseId ? `/upload?caseId=${encodeURIComponent(caseId)}` : "/upload"}
-          className="btn btn-primary"
-          style={{ width: "100%", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 12 }}
-        >
-          <Upload size={16} />
-          Submit Document
-        </Link>
-      </div>
+          <Link
+            href={caseId ? `/upload?caseId=${encodeURIComponent(caseId)}` : "/upload"}
+            className="btn btn-primary"
+            style={{ width: "100%", justifyContent: "center", gap: 8, padding: "12px", borderRadius: 12 }}
+          >
+            <Upload size={16} />
+            Submit Document
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

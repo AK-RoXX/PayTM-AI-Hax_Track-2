@@ -69,7 +69,7 @@ export function CaseHeader({ data }: { data: CaseData }) {
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <Hospital size={15} style={{ color: "#64748b" }} />
-              Hospital: <strong>{data.hospital_name || "Apollo Hospital"}</strong>
+              Hospital: <strong>{data.hospital_name || "Not specified"}</strong>
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <FileText size={15} style={{ color: "#64748b" }} />

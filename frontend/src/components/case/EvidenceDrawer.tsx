@@ -7,39 +7,40 @@ import type { Evidence } from "@/lib/types";
 export function EvidenceDrawer({ items }: { items: Evidence[] }) {
   const [open, setOpen] = useState(true);
 
-  // If dynamic items exist, use them; otherwise, show the authentic citations from Screen 5 of Application UI.png
-  const displayItems =
-    items && items.length > 0
-      ? items
-      : [
-          {
-            claim: "Room rent adjustment",
-            document_name: "Policy Document.pdf",
-            page_number: 18,
-            section: "Clause 3.2.1",
-            quote:
-              "Room rent shall be restricted to maximum of ₹5,000 per day. Any excess expense shall be borne by the insured proportionate to the sum insured.",
-            confidence: 0.98,
-          },
-          {
-            claim: "Non-payable hospital items",
-            document_name: "Hospital Bill.jpg",
-            page_number: 4,
-            section: "Summary Annexure",
-            quote:
-              "Non-medical supplies, patient kit, surgical gloves and administration charges totaling ₹10,000 marked as non-payable.",
-            confidence: 0.94,
-          },
-          {
-            claim: "Deductible deduction",
-            document_name: "Policy Document.pdf",
-            page_number: 21,
-            section: "Schedule of Deductibles",
-            quote:
-              "A mandatory standard deductible of ₹10,000 shall be applied to every admissible claim per policy year.",
-            confidence: 0.96,
-          },
-        ];
+  // Display only real evidence — no hardcoded fallbacks
+  const displayItems = items || [];
+
+  if (displayItems.length === 0) {
+    return (
+      <section className="card" id="evidence-drawer" style={{ padding: "26px" }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="label" style={{ color: "#0066f5" }}>Evidence Drawer</span>
+          </div>
+          <h2 className="heading" style={{ fontSize: 20, margin: 0, color: "var(--paytm-navy)" }}>
+            Exact Quotes &amp; Page References
+          </h2>
+        </div>
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: 14,
+            border: "1px dashed #cbd5e1",
+          }}
+        >
+          <Quote size={28} style={{ color: "#94a3b8", margin: "0 auto 8px" }} />
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+            No evidence yet
+          </p>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            Evidence quotes will appear here once documents are processed and facts are extracted.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="card" id="evidence-drawer" style={{ padding: "26px" }}>

@@ -32,6 +32,53 @@ from app.services.evidence_service import (
 router = APIRouter(prefix="/cases/{case_id}", tags=["assistant"])
 logger = logging.getLogger(__name__)
 
+
+@router.get("/messages")
+async def list_messages(
+    case_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Fetch persisted chat history for a case, scoped to the signed-in user."""
+    user_id = await _user_id(authorization)
+
+    # Verify the user owns this case
+    try:
+        await run_in_threadpool(load_case_state, case_id, user_id)
+    except CaseAccessError as error:
+        raise HTTPException(404, str(error)) from error
+    except DocumentPipelineError as error:
+        raise HTTPException(503, str(error)) from error
+
+    try:
+        response = _supabase_request(
+            "GET",
+            "/rest/v1/messages",
+            params={
+                "case_id": f"eq.{case_id}",
+                "select": "id,role,content,language,abstained,evidence_json,created_at",
+                "order": "created_at.asc",
+                "limit": "100",
+            },
+        )
+        rows = response.json()
+    except DocumentPipelineError as error:
+        raise HTTPException(503, str(error)) from error
+
+    items = []
+    for row in rows:
+        items.append({
+            "id": row["id"],
+            "sender": "assistant" if row["role"] == "assistant" else "user",
+            "text": row.get("content", ""),
+            "timestamp": row.get("created_at"),
+            "abstained": row.get("abstained", False),
+            "evidence": row.get("evidence_json") or [],
+        })
+
+    return {"items": items}
+
+
+
 ABSTAIN_MESSAGE = (
     "Main aapke uploaded documents mein is sawaal ka verified jawab nahi dhundh paaya. "
     "Agar aapne abhi documents upload nahi kiye hain, please upload karein. "

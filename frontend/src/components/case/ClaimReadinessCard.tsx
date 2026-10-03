@@ -4,7 +4,7 @@ import type { CaseData } from "@/lib/types";
 
 export function ClaimReadinessCard({ data }: { data: CaseData }) {
   const complete = data.missing_requirements.length === 0;
-  const score = data.readiness_score || (complete ? 100 : 75);
+  const score = data.readiness_score;
 
   return (
     <section className="card" style={{ padding: "26px" }}>
