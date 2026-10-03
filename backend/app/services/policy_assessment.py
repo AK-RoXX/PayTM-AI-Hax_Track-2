@@ -429,7 +429,7 @@ def assess_policy_for_case(state: dict, request: PolicyAssessmentRequest, user_i
         }
         if len(day_counts) > 1:
             raise PolicyAssessmentError(
-                f"All {label} rows that share a daily limit need the same stay-day count. Combine rows with different dates or verify the bill's day counts before calculating.",
+                f"All {label} rows sharing a daily limit must use the same stay-day count. This calculator models one common stay period, so reconcile lines that cover different periods before calculating.",
                 422,
             )
     if extracted_pages:

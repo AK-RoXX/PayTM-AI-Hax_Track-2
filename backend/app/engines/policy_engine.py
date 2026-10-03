@@ -243,8 +243,10 @@ def calculate_policy_scenario(
         (item.quantity or Decimal("0") for item in items if item.category == "room_rent"),
         default=Decimal("0"),
     )
-    if actual_room_rent and room_rent_days and room_limit is not None:
-        actual_room_rate_per_day = actual_room_rent / room_rent_days
+    actual_room_rate_per_day = (
+        actual_room_rent / room_rent_days if actual_room_rent and room_rent_days else None
+    )
+    if actual_room_rate_per_day is not None and room_limit is not None:
         room_ratio = min(Decimal("1"), room_limit / actual_room_rate_per_day)
     else:
         room_ratio = Decimal("1")
@@ -445,6 +447,12 @@ def calculate_policy_scenario(
         "proportionate_deduction": {
             "applicability": prop_state,
             "room_cost_ratio_assumption": float(room_ratio.quantize(Decimal("0.0001"))),
+            "eligible_room_rate_per_day": int(room_limit) if room_limit is not None else None,
+            "actual_room_rate_per_day": (
+                int(_money(actual_room_rate_per_day))
+                if actual_room_rate_per_day is not None
+                else None
+            ),
             "applies_to": sorted(associated_categories),
             "exempt_categories": sorted(exempt_categories),
             "formula_note": proportionate.source_wording_note,

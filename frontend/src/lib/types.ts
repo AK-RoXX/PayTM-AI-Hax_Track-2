@@ -241,3 +241,11 @@ export type Readiness = {
   documents_processing: number;
   documents_failed: number;
 };
+
+
+export type CaseUpdateRequest = {
+  estimated_bill?: number | null;
+  hospital_name?: string | null;
+  patient_relation?: string | null;
+  status?: string | null;
+};
