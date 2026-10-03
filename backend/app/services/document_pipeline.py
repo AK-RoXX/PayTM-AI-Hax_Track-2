@@ -255,18 +255,28 @@ def process_document_upload(case_id: str, user_id: str, filename: str, content: 
                 json=records[offset : offset + 100],
             )
 
+        # Clear pre-existing facts for this document if any
+        try:
+            _supabase_request(
+                "DELETE",
+                f"/rest/v1/case_facts?document_id=eq.{document['id']}",
+                headers={"Prefer": "return=minimal"},
+            )
+        except Exception:
+            pass
+
         fact_records = []
-        for fact in extract_claim_facts(document_type, pages):
+        for fact in extract_claim_facts(document_type, pages, filename=filename, use_ai=True):
             fact_records.append({
                 "case_id": case_id,
                 "document_id": document["id"],
                 "fact_key": fact["fact_key"],
                 "value_json": fact["value_json"],
                 "value_type": fact["value_type"],
-                "verification_status": fact["verification_status"],
-                "source_page": fact["source_page"],
-                "source_quote": fact["source_quote"],
-                "confidence": fact["confidence"],
+                "verification_status": fact.get("verification_status") or "extracted",
+                "source_page": fact.get("source_page"),
+                "source_quote": fact.get("source_quote"),
+                "confidence": fact.get("confidence", 0.9),
             })
         if fact_records:
             _supabase_request(

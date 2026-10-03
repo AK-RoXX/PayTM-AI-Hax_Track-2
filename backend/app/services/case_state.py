@@ -208,6 +208,8 @@ def resolve_facts(facts: Iterable[dict]) -> dict[str, dict]:
                 candidate.get("uploaded_at") or "",
             ),
         )
+        doc_meta_name = _document_meta(best).get("file_name")
+        default_doc_name = "Claim Intake" if not best.get("document_id") else "Uploaded document"
         entry = {
             "fact_key": fact_key,
             "value": best.get("value_json"),
@@ -217,11 +219,11 @@ def resolve_facts(facts: Iterable[dict]) -> dict[str, dict]:
             "source_page": best.get("source_page"),
             "source_quote": best.get("source_quote") or "",
             "document_id": best.get("document_id"),
-            "document_name": _document_meta(best).get("file_name") or "",
+            "document_name": doc_meta_name or default_doc_name,
             "sources": [
                 {
                     "document_id": candidate.get("document_id"),
-                    "document_name": _document_meta(candidate).get("file_name") or "",
+                    "document_name": _document_meta(candidate).get("file_name") or default_doc_name,
                     "page_number": candidate.get("source_page"),
                     "quote": candidate.get("source_quote") or "",
                     "confidence": float(candidate.get("confidence") or 0),
@@ -483,7 +485,9 @@ def _build_facts(facts: list[dict], resolved: dict[str, dict]) -> list[dict]:
                 "conflicting": resolved_entry.get("conflicting", False),
                 "confidence": float(fact.get("confidence") or 0),
                 "document_id": fact.get("document_id"),
-                "document_name": _document_meta(fact).get("file_name") or "",
+                "document_name": _document_meta(fact).get("file_name") or (
+                    "Claim Intake" if not fact.get("document_id") else "Uploaded document"
+                ),
                 "source_page": fact.get("source_page"),
                 "source_quote": fact.get("source_quote") or "",
             }

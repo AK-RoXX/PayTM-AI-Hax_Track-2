@@ -100,7 +100,16 @@ def _insert_case(
     language: str,
     overrides: dict | None = None,
 ) -> dict:
+    import re
     overrides = overrides or {}
+    final_hospital = (overrides.get("hospital_name") or "").strip() or (intake.get("hospital_name") or "").strip() or None
+    final_relation = overrides.get("patient_relation") or intake.get("patient_relation")
+    final_bill = (
+        overrides.get("estimated_bill")
+        if overrides.get("estimated_bill") is not None
+        else intake.get("estimated_bill_amount")
+    )
+
     created = _supabase_request(
         "POST",
         "/rest/v1/cases",
@@ -110,13 +119,10 @@ def _insert_case(
             "user_id": user_id,
             "case_type": "medical_claim",
             "status": "intake",
-            "patient_relation": overrides.get("patient_relation")
-            or intake.get("patient_relation"),
-            "hospital_name": (overrides.get("hospital_name") or "").strip() or None,
+            "patient_relation": final_relation,
+            "hospital_name": final_hospital,
             "language_pref": language if language in {"english", "hindi", "hinglish"} else "hinglish",
-            "estimated_bill": overrides.get("estimated_bill")
-            if overrides.get("estimated_bill") is not None
-            else intake.get("estimated_bill_amount"),
+            "estimated_bill": final_bill,
         },
     ).json()
     case = created[0]
@@ -134,6 +140,70 @@ def _insert_case(
         message.strip()[:200],
         actor="user",
     )
+
+    user_facts = []
+    if final_hospital:
+        user_facts.append({
+            "case_id": case["id"],
+            "document_id": None,
+            "fact_key": "hospital_name",
+            "value_json": final_hospital,
+            "value_type": "text",
+            "verification_status": "verified",
+            "source_page": None,
+            "source_quote": f"Hospital '{final_hospital}' provided during claim intake",
+            "confidence": 0.95,
+        })
+    if final_bill is not None and float(final_bill) > 0:
+        user_facts.append({
+            "case_id": case["id"],
+            "document_id": None,
+            "fact_key": "estimated_total_amount",
+            "value_json": float(final_bill),
+            "value_type": "money",
+            "verification_status": "extracted",
+            "source_page": None,
+            "source_quote": f"Estimated bill of ₹{float(final_bill):,.0f} entered in claim intake",
+            "confidence": 0.90,
+        })
+    if final_relation:
+        user_facts.append({
+            "case_id": case["id"],
+            "document_id": None,
+            "fact_key": "patient_relation",
+            "value_json": final_relation,
+            "value_type": "text",
+            "verification_status": "verified",
+            "source_page": None,
+            "source_quote": f"Patient relation: {final_relation}",
+            "confidence": 0.95,
+        })
+
+    policy_match = re.search(r"(?:policy\s*(?:no\.?|number|id|#)|insurance\s*(?:no\.?|id))\s*[:#-]?\s*([A-Za-z0-9\-/]{4,})", message, re.I)
+    if policy_match:
+        user_facts.append({
+            "case_id": case["id"],
+            "document_id": None,
+            "fact_key": "policy_number",
+            "value_json": policy_match.group(1).strip(),
+            "value_type": "text",
+            "verification_status": "extracted",
+            "source_page": None,
+            "source_quote": policy_match.group(0).strip(),
+            "confidence": 0.88,
+        })
+
+    if user_facts:
+        try:
+            _supabase_request(
+                "POST",
+                "/rest/v1/case_facts",
+                headers={"Prefer": "return=minimal"},
+                json=user_facts,
+            )
+        except Exception as error:
+            logger.warning("Could not persist initial intake facts for %s: %s", case["id"], error)
+
     return case
 
 

@@ -294,6 +294,13 @@ export function AppNavbar({
             Dashboard
           </Link>
           <Link
+            href="/analytics"
+            onClick={() => setMenuOpen(false)}
+            style={{ padding: "8px 12px", borderRadius: 8, color: "#1e293b" }}
+          >
+            Analytics
+          </Link>
+          <Link
             href="/intake"
             onClick={() => setMenuOpen(false)}
             style={{ padding: "8px 12px", borderRadius: 8, color: "#1e293b" }}

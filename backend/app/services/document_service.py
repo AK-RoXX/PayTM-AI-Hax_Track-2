@@ -67,21 +67,26 @@ def split_pages_into_chunks(pages: list[dict], max_chars: int = 1200, overlap: i
     return chunks
 
 DOCUMENT_TYPE_HINTS: tuple[tuple[str, str], ...] = (
-    ("health_policy", r"policy\s*(?:no\.?|number|id)|sum\s+insured|room\s*rent|policy\s+period|pre[\s\-]?existing"),
-    ("discharge_summary", r"discharge\s+summary|final\s+diagnosis|doctor(?:'s)?\s+signature|date\s+of\s+discharge|discharge\s+advice"),
-    ("hospital_estimate", r"estimated\s+total|total\s+bill|total\s+payable|final\s+bill|net\s+payable|estimate\s+amount|hospital\s+estimate"),
-    ("admission_record", r"date\s+of\s+admission|admission\s+date|admitted\s+on|ip\s+number|ipd\s+number"),
-    ("identity_proof", r"aadhaar|identity\s+(?:document|proof)|\bpan\b|passport|driving\s+licen[cs]e"),
+    ("health_policy", r"policy\s*(?:no\.?|number|id|schedule)|sum\s+insured|room\s*rent|policy\s+period|pre[\s\-]?existing|tpa\s+name|proposer\s+name|claim\s+limit|insurance\s+company|mediclaim"),
+    ("discharge_summary", r"discharge\s+summary|final\s+diagnosis|doctor(?:'s)?\s+signature|date\s+of\s+discharge|discharge\s+advice|treating\s+doctor|course\s+in\s+hospital|discharge\s+status"),
+    ("hospital_estimate", r"estimated\s+total|total\s+bill|total\s+payable|final\s+bill|net\s+payable|estimate\s+amount|hospital\s+estimate|hospital\s+bill|tax\s+invoice|ipd\s+bill|bill\s+summary|total\s+amount|grand\s+total|package\s+charges|bed\s+charges"),
+    ("admission_record", r"date\s+of\s+admission|admission\s+date|admitted\s+on|ip\s+number|ipd\s+number|admission\s+advice|indoor\s+case|admission\s+note"),
+    ("identity_proof", r"aadhaar|identity\s+(?:document|proof)|\bpan\b|passport|driving\s+licen[cs]e|unique\s+identification\s+authority"),
 )
 
 
 def classify_document(filename: str) -> str:
     name = filename.lower()
-    if "policy" in name: return "health_policy"
-    if "discharge" in name: return "discharge_summary"
-    if "admission" in name: return "admission_record"
-    if "bill" in name or "estimate" in name: return "hospital_estimate"
-    if "id" in name or "aadhaar" in name or "pan" in name: return "identity_proof"
+    if any(k in name for k in ["policy", "schedule", "insurance", "mediclaim"]):
+        return "health_policy"
+    if any(k in name for k in ["discharge", "summary"]):
+        return "discharge_summary"
+    if any(k in name for k in ["admission", "admit", "indoor"]):
+        return "admission_record"
+    if any(k in name for k in ["bill", "estimate", "invoice", "receipt", "charges"]):
+        return "hospital_estimate"
+    if any(k in name for k in ["id", "aadhaar", "aadhar", "pan", "passport", "voter", "license"]):
+        return "identity_proof"
     return "unknown"
 
 

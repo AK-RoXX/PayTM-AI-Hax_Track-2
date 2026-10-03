@@ -10,6 +10,7 @@ import {
   PieChart,
   Landmark,
   CreditCard,
+  ChartNoAxesCombined,
   Settings,
   HelpCircle,
 } from "lucide-react";
@@ -29,6 +30,12 @@ export function AppSidebar({ currentCaseId, className = "" }: AppSidebarProps) {
       href: "/dashboard",
       icon: Home,
       active: pathname === "/dashboard",
+    },
+    {
+      label: "Analytics",
+      href: "/analytics",
+      icon: ChartNoAxesCombined,
+      active: pathname.startsWith("/analytics"),
     },
     {
       label: "My Claims",
