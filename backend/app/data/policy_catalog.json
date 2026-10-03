@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": "new-india-mediclaim-2024-25",
+      "insurer": "The New India Assurance Company Limited",
+      "product_name": "New India Mediclaim Policy",
+      "uin": "NIAHLIP25040V102425",
+      "source": {
+        "title": "Prospectus New India Mediclaim Policy",
+        "kind": "prospectus",
+        "pages": [11, 12],
+        "document_path": "knowledge_base/Prospectus New India Mediclaim Policy.pdf",
+        "scope_note": "Published product reference only. Confirm the insured person's policy schedule, plan, effective version, endorsements, and conditions before using this scenario. A prospectus is not the insured person's contract."
+      },
+      "tiers": [
+        {
+          "tier_id": "basic-up-to-15-lakh",
+          "label": "Basic (sum insured up to ₹15 lakh)",
+          "minimum_sum_insured": 1,
+          "maximum_sum_insured": 1500000,
+          "supported_sum_insured_values": [],
+          "room_rent": {
+            "method": "percent_of_sum_insured",
+            "percentage": 1,
+            "maximum_per_day": 15000
+          },
+          "icu": {
+            "method": "percent_of_sum_insured",
+            "percentage": 2,
+            "maximum_per_day": 25000
+          }
+        },
+        {
+          "tier_id": "uplift-25-lakh-to-1-crore",
+          "label": "Uplift (₹25 lakh, ₹50 lakh, or ₹1 crore sum insured)",
+          "minimum_sum_insured": null,
+          "maximum_sum_insured": null,
+          "supported_sum_insured_values": [2500000, 5000000, 10000000],
+          "room_rent": {
+            "method": "percent_of_sum_insured",
+            "percentage": 1,
+            "maximum_per_day": 30000
+          },
+          "icu": {
+            "method": "percent_of_sum_insured",
+            "percentage": 2,
+            "maximum_per_day": 50000
+          }
+        },
+        {
+          "tier_id": "uplift-2-to-5-crore",
+          "label": "Uplift (₹2 crore, ₹3 crore, or ₹5 crore sum insured)",
+          "minimum_sum_insured": null,
+          "maximum_sum_insured": null,
+          "supported_sum_insured_values": [20000000, 30000000, 50000000],
+          "room_rent": {
+            "method": "actuals",
+            "percentage": null,
+            "maximum_per_day": null
+          },
+          "icu": {
+            "method": "actuals",
+            "percentage": null,
+            "maximum_per_day": null
+          }
+        }
+      ],
+      "proportionate_deduction": {
+        "formula": "eligible_room_cost_divided_by_billed_room_cost",
+        "applies_to": ["other_medical"],
+        "exempt_categories": ["pharmacy", "consumables", "diagnostics", "implants_devices"],
+        "requires_confirmed_applicability": true,
+        "source_wording_note": "The prospectus describes proportionate deduction for associated medical expenses and lists exceptions. It does not provide a computable formula for every claim scenario; this ratio is an illustrative modelling assumption, not an insurer adjudication rule."
+      },
+      "not_modelled": [
+        "Waiting periods and pre-existing disease rules",
+        "Medical necessity, exclusions, and non-payable items",
+        "Co-payment, deductible, sub-limits other than room and ICU, and available sum insured after prior claims",
+        "Network arrangements, package rates, hospital billing-category exceptions, endorsements, and insurer interpretation"
+      ]
+    }
+  ]
+}

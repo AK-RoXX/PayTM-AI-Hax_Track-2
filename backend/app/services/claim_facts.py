@@ -102,7 +102,7 @@ _LABEL_BOUNDARY = re.compile(
     r"sum\s+insured|insured\s+amount|coverage\s+amount|total\s+sum\s+insured|"
     r"room\s*rent|bed\s+charges?|co[\s\-]?pay(?:ment)?|deductible|"
     r"waiting\s+period|policy\s+period|valid\s+from|cover(?:age)?\s+period|"
-    r"policy\s*(?:no\.?|number|id)|policy\s+holder|insured\s*(?:name|person)|"
+    r"policy\s*(?:no\.?|number|id)|policy\s+holder|uin|insured\s*(?:name|person)|"
     r"name\s+of\s+insured|insurer|insurance\s+company|company\s+name|"
     r"hospital|institution|clinic|facility|centre|center|"
     r"date\s+of\s+admission|admission\s+date|admitted\s+on|"
@@ -161,6 +161,15 @@ _DISCHARGE_DATE_PATTERNS = (
 
 
 FACT_CONTRACT: tuple[FactSpec, ...] = (
+    FactSpec(
+        key="policy_uin",
+        label="Product UIN",
+        value_type="text",
+        patterns=(r"\bUIN\s*[:#-]?\s*([A-Z][A-Z0-9/-]{8,})\b",),
+        confidence=0.97,
+        document_types=frozenset({_POLICY}),
+        aliases=frozenset({"unique identification number", "product uin"}),
+    ),
     FactSpec(
         key="policy_number",
         label="Policy number",
@@ -569,4 +578,4 @@ def _first_match(spec: FactSpec, pages: list[dict]) -> tuple[Any, int | None, st
             if spec.cast is str:
                 quote = quote[: MAX_TEXT_VALUE_LENGTH * 2]
             return value, page.get("page_number"), _trim_quote(quote)
-    return None
+    return None

@@ -21,6 +21,7 @@ from app.schemas.case import (
     EvidenceResponse,
     ReadinessResponse,
 )
+from app.schemas.policy import PolicyAssessmentRequest
 from app.services import case_state
 from app.services.case_state import load_case_state
 from app.services.document_pipeline import (
@@ -29,6 +30,11 @@ from app.services.document_pipeline import (
     DocumentPipelineError,
     _supabase_request,
     authenticate_user,
+)
+from app.services.policy_assessment import (
+    PolicyAssessmentError,
+    assess_policy_for_case,
+    get_policy_terms_for_case,
 )
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -257,6 +263,27 @@ async def facts(case_id: str, authorization: str | None = Header(default=None)):
     """Extracted claim facts, each with the document and page it came from."""
     state = await _load_state(case_id, authorization)
     return {"items": state["view"]["facts"]}
+
+
+@router.get("/{case_id}/policy-terms")
+async def policy_terms(case_id: str, authorization: str | None = Header(default=None)):
+    """Return exact-UIN product-rule candidates and their extracted provenance."""
+    state = await _load_state(case_id, authorization)
+    return await run_in_threadpool(get_policy_terms_for_case, state)
+
+
+@router.post("/{case_id}/policy-assessment")
+async def policy_assessment(
+    case_id: str,
+    payload: PolicyAssessmentRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Calculate a deterministic, case-scoped scenario from confirmed bill inputs."""
+    state = await _load_state(case_id, authorization)
+    try:
+        return await run_in_threadpool(assess_policy_for_case, state, payload)
+    except PolicyAssessmentError as error:
+        raise HTTPException(error.status_code, error.detail) from error
 
 
 @router.get("/{case_id}/evidence", response_model=EvidenceResponse)

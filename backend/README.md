@@ -77,3 +77,16 @@ Apply the Supabase migrations before uploading. The service role key must remain
 OCR providers are tried in `OCR_PROVIDER_ORDER`; currently supported values are `sarvam` and `gemini`. Configure either or both API keys. Gemini Interactions are sent with storage disabled. Provider free-tier quotas are account- and region-dependent and are not guaranteed. OCR provider adapters normalize results to page text; embeddings always come from the same local model so the pgvector dimensions remain consistent.
 
 Claim intake voice input uses the same `SARVAM_API_KEY` and `GEMINI_API_KEY`. The backend selects a provider automatically using `OCR_PROVIDER_ORDER`; users select the spoken language or leave automatic detection on. Recordings are limited to 28 seconds and 10 MB and sent to the authenticated `/api/v1/speech/transcribe` endpoint. The app does not persist audio; Gemini requires a temporary Files API upload, which the backend deletes after transcription. The transcript appears in the editable claim description and is submitted with the claim only when the user continues. Gemini transcription interactions disable storage; configure `GEMINI_STT_MODEL` to override the default.
+
+## Policy rules and planning scenarios
+
+The deterministic policy engine is in `app/engines/policy_engine.py`. Its typed `PolicyTerms` models load from `app/data/policy_catalog.json`; product lookup requires an exact UIN match. The first reviewed catalog entry is New India Mediclaim Policy, UIN `NIAHLIP25040V102425`, sourced from pages 11–12 of `knowledge_base/Prospectus New India Mediclaim Policy.pdf`.
+
+The engine resolves room-rent and ICU daily limits for supported sum-insured tiers and can apply those limits to a complete itemised bill. It can also show a range for proportionate deductions when applicability is unknown. That ratio is explicitly an illustrative modelling assumption because the prospectus describes the deduction and exceptions without specifying one universal numeric formula.
+
+Authenticated case endpoints:
+
+- `GET /api/v1/cases/{case_id}/policy-terms` returns UIN-matched product candidates, extracted fact provenance, source pages, and any review blockers.
+- `POST /api/v1/cases/{case_id}/policy-assessment` accepts the selected policy and bill document IDs, the extracted UIN, explicit confirmation that the active schedule matches, and page-linked bill line items. Line items must reconcile to the bill total extracted from that same case document.
+
+An assessment is a planning scenario before unmodelled co-payments, deductibles, exclusions, waiting periods, prior claims, and other terms. The case overview's existing `possible_coverage` value is only a sum-insured ceiling and its gap is a minimum-gap floor; neither is an expected payout. Unsupported UINs, tiers, conflicting facts, missing evidence, and incomplete bill breakdowns produce review errors instead of borrowing another insurer's rules.

@@ -36,8 +36,9 @@ DOCUMENT_COLUMNS = (
 EVENT_COLUMNS = "id,case_id,event_type,actor,payload_json,occurred_at"
 
 PLANNING_DISCLAIMER = (
-    "Planning estimate from your uploaded documents. "
-    "Final coverage is decided by your insurer."
+    "This is only a sum-insured ceiling, not an expected payout. Room and ICU limits, "
+    "exclusions, co-payments, deductibles, waiting periods, and prior claims are not applied; "
+    "the actual gap may be higher. Final coverage is decided by your insurer."
 )
 CONFLICT_CONFIDENCE_FLOOR = 0.85
 TERMINAL_STATUSES = {"submitted", "closed"}
@@ -368,22 +369,40 @@ def _resolve_hospital_name(case: dict, resolved: dict[str, dict]) -> str:
 
 
 def _build_financial_map(case: dict, resolved: dict[str, dict]) -> dict:
-    estimate = _first_money(resolved, "estimated_total_amount") or _number(
-        case.get("estimated_bill")
+    estimate_fact = resolved.get("estimated_total_amount")
+    estimate = (
+        _first_money(resolved, "estimated_total_amount")
+        if estimate_fact and estimate_fact.get("verification_status") != "conflict"
+        else None
     )
-    sum_insured = _first_money(resolved, "sum_insured")
-    coverage = (
-        min(sum_insured, estimate)
-        if sum_insured
-        else _number(case.get("estimated_coverage"))
+    estimate = estimate if estimate is not None else _number(case.get("estimated_bill"))
+
+    sum_insured_fact = resolved.get("sum_insured")
+    sum_insured = (
+        _first_money(resolved, "sum_insured")
+        if sum_insured_fact
+        and sum_insured_fact.get("verification_status") not in {"conflict", "needs_review"}
+        else None
     )
-    estimate = estimate or 0.0
-    coverage = coverage or 0.0
+
+    inputs_available = estimate is not None and sum_insured is not None
+    ceiling = min(sum_insured, estimate) if inputs_available else 0.0
+    estimate_value = estimate or 0.0
+    status = (
+        "bill_amount_missing"
+        if estimate is None
+        else "sum_insured_missing"
+        if sum_insured is None
+        else "sum_insured_ceiling_only"
+    )
     return {
-        "hospital_estimate": round(estimate, 2),
-        "possible_coverage": round(coverage, 2),
-        "estimated_gap": round(max(estimate - coverage, 0.0), 2),
+        "hospital_estimate": round(estimate_value, 2),
+        "possible_coverage": round(ceiling, 2),
+        "estimated_gap": round(max(estimate_value - ceiling, 0.0), 2) if inputs_available else 0.0,
         "status": "planning_estimate",
+        "calculation_status": status,
+        "possible_coverage_basis": "sum_insured_ceiling_only",
+        "estimated_gap_basis": "minimum_gap_before_policy_adjustments",
         "disclaimer": PLANNING_DISCLAIMER,
     }
 
