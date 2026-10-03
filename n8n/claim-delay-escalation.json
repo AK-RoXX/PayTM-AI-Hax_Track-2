@@ -1,0 +1,49 @@
+{
+  "name": "Sahaayak - Claim Delay Escalation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sahaayak-escalation",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/integrations/n8n/callback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"title\":\"Escalation draft prepared\",\"detail\":\"Claim is still awaiting hospital verification. A support escalation draft is ready for review.\"}"
+      },
+      "name": "Create Escalation Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        520,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Escalation Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

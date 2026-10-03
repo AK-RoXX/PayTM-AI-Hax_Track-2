@@ -1,0 +1,73 @@
+{
+  "name": "Sahaayak - Missing Document Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sahaayak-reminder",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "name": "Demo Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/v1/integrations/n8n/callback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"title\":\"Reminder sent\",\"detail\":\"Please upload the signed discharge summary to complete your claim.\"}"
+      },
+      "name": "Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Demo Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Wait": {
+      "main": [
+        [
+          {
+            "node": "Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

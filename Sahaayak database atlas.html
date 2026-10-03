@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Sahaayak database atlas</title>
+    <style>
+        :root {
+            --bg: #fff;
+            --fg: #14202b;
+            --mut: #5b6b7a;
+            --line: #d9e0e7;
+            --card: #f5f8fb;
+            --a: #0a6cff;
+            --g1: #dbeafe;
+            --g2: #dcfce7;
+            --g3: #fef3c7;
+            --g4: #fce7f3;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px)
+        }
+
+        @media(prefers-color-scheme:dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #0f1720;
+                --fg: #e6edf3;
+                --mut: #93a4b5;
+                --line: #2a3846;
+                --card: #16212c;
+                --a: #5aa2ff;
+                --g1: #1e3a5f;
+                --g2: #14532d;
+                --g3: #5b4510;
+                --g4: #5b1d44
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #0f1720;
+            --fg: #e6edf3;
+            --mut: #93a4b5;
+            --line: #2a3846;
+            --card: #16212c;
+            --a: #5aa2ff;
+            --g1: #1e3a5f;
+            --g2: #14532d;
+            --g3: #5b4510;
+            --g4: #5b1d44
+        }
+
+        html {
+            scroll-padding-top: env(safe-area-inset-top, 0px)
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif
+        }
+
+        main {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px 16px 60px
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 8px 0
+        }
+
+        h2 {
+            font-size: 20px;
+            margin: 36px 0 10px;
+            border-top: 1px solid var(--line);
+            padding-top: 20px
+        }
+
+        p {
+            color: var(--mut);
+            margin: 6px 0
+        }
+
+        code {
+            background: var(--card);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 13px
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0
+        }
+
+        .stats span {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 13px
+        }
+
+        .scroll {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--card)
+        }
+
+        svg text {
+            fill: var(--fg);
+            font: 600 12px system-ui
+        }
+
+        svg rect {
+            stroke: var(--line)
+        }
+
+        svg .e {
+            stroke: var(--mut);
+            stroke-width: 1.4;
+            fill: none
+        }
+
+        .leg {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 13px;
+            margin: 8px 0
+        }
+
+        .leg i {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 5px;
+            vertical-align: -1px
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px 14px
+        }
+
+        .card h3 {
+            margin: 0 0 6px;
+            font-size: 15px
+        }
+
+        ol {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 14px
+        }
+
+        li {
+            margin: 3px 0
+        }
+
+        details {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            margin: 8px 0;
+            background: var(--card)
+        }
+
+        summary {
+            cursor: pointer;
+            padding: 10px 14px;
+            font-weight: 600;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        summary small {
+            font-weight: 400;
+            color: var(--mut)
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: var(--line);
+            font-weight: 500
+        }
+
+        .body {
+            padding: 0 14px 12px
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 13px
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 5px 8px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top
+        }
+
+        th {
+            color: var(--mut);
+            font-weight: 600
+        }
+
+        td:first-child {
+            font-family: ui-monospace, Menlo, monospace;
+            white-space: nowrap
+        }
+
+        input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--fg);
+            font-size: 14px;
+            box-sizing: border-box
+        }
+
+        .r {
+            display: grid;
+            gap: 8px
+        }
+
+        .r div {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--a);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Sahaayak database atlas</h1>
+        <p>Every table in the Supabase (Postgres) schema: what it is for, what each column means, and how tables
+            reference each other. Cognee holds only a rebuildable search copy of the chunk text; nothing here depends on
+            it.</p>
+        <div class="stats" id="stats"></div>
+
+        <h2>Relationship map</h2>
+        <p>An arrow runs from the table holding the foreign key to the table it references. Click a box to open its
+            columns below.</p>
+        <div class="scroll"><svg id="map" viewBox="0 0 900 400" width="900" height="400" role="img"
+                aria-label="Table relationship map">
+                <defs>
+                    <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0 0L8 4L0 8z" fill="#7a8a99" />
+                    </marker>
+                </defs>
+            </svg></div>
+        <div class="leg"><span><i style="background:var(--g1)"></i>Case core</span><span><i
+                    style="background:var(--g2)"></i>Documents and knowledge</span><span><i
+                    style="background:var(--g3)"></i>Activity</span><span><i style="background:var(--g4)"></i>Rules
+                lookup</span><span>Solid: child rows go with parent (CASCADE). Dashed: link cleared, row stays (SET
+                NULL).</span></div>
+
+        <h2>The case-safety chain</h2>
+        <p>One case owns everything. Every child table carries <code>case_id</code>, so one query
+            (<code>where case_id = ?</code>) pulls the full picture, and one delete wipes a case cleanly.</p>
+        <div class="r">
+            <div><b>cases</b> is the root. 1 case has many documents, events, actions and messages.</div>
+            <div><b>documents</b> belong to one case. 1 document has many chunks and many facts.</div>
+            <div><b>chunks</b> are the plain text pieces (with page number) that get copied into Cognee for search.
+            </div>
+            <div><b>case_facts</b> are exact extracted values (sum insured, bill amount). The maths reads only from
+                here, never from Cognee.</div>
+            <div><b>evidence_items</b> link a fact to the chunk that proves it. This is what the evidence drawer shows.
+            </div>
+        </div>
+
+        <h2>How the tables work together</h2>
+        <div class="flow">
+            <div class="card">
+                <h3>1. Upload a document</h3>
+                <ol>
+                    <li>Insert <code>documents</code> row, status <code>processing</code>; file goes to Storage.</li>
+                    <li>Extract text per page, insert <code>chunks</code>.</li>
+                    <li>LLM extracts facts, insert <code>case_facts</code> with page and quote.</li>
+                    <li>Send chunks to Cognee, set <code>synced_to_cognee = true</code>.</li>
+                    <li>Rules update <code>cases</code> (coverage, gap, readiness).</li>
+                    <li>Insert <code>case_events</code>; set document status <code>done</code>.</li>
+                </ol>
+            </div>
+            <div class="card">
+                <h3>2. Ask a question</h3>
+                <ol>
+                    <li>Save the user line in <code>messages</code>.</li>
+                    <li>Cognee returns matching text; match it back to a <code>chunks</code> row.</li>
+                    <li>Code checks the AI quote really sits inside that chunk text.</li>
+                    <li>Pass: insert <code>evidence_items</code>. Fail: set <code>abstained = true</code>.</li>
+                    <li>Save the assistant reply with <code>evidence_json</code>.</li>
+                </ol>
+            </div>
+            <div class="card">
+                <h3>3. Readiness and reminder</h3>
+                <ol>
+                    <li>Read <code>document_requirements</code> for the case type.</li>
+                    <li>Add <code>weight</code> per passing document, <code>partial_credit</code> if uploaded but check
+                        fails.</li>
+                    <li>Policy 25 + bill 25 + admission 20 + unsigned discharge 8 = 78.</li>
+                    <li>Score under 100: insert an <code>actions</code> row, call n8n.</li>
+                    <li>n8n calls back; insert <code>case_events</code> "reminder_sent".</li>
+                </ol>
+            </div>
+        </div>
+
+        <h2>All tables</h2>
+        <input id="q" placeholder="Search tables and columns, for example fact_key or readiness_score">
+        <div id="tables"></div>
+
+        <h2>Rules the database enforces</h2>
+        <div class="r">
+            <div><b>Unique fact per document:</b> <code>UNIQUE (case_id, document_id, fact_key)</code>. Re-processing
+                updates a fact, never duplicates it.</div>
+            <div><b>Status checks:</b> <code>processing_status</code>, <code>verification_status</code>,
+                <code>actions.status</code>, <code>messages.role</code> and <code>readiness_score</code> (0 to 100) all
+                use CHECK constraints.</div>
+            <div><b>One readiness rule per document type:</b> <code>UNIQUE (case_type, document_type)</code> on
+                <code>document_requirements</code>.</div>
+            <div><b>updated_at trigger</b> on <code>cases</code> so no client forgets to set it.</div>
+            <div><b>Row level security:</b> a user may read or write a row only if its case belongs to them
+                (<code>cases.user_id = auth.uid()</code>). Skip for the demo, add after.</div>
+            <div><b>Source of truth:</b> amounts, readiness and status live only in Supabase. Cognee never writes to
+                them.</div>
+        </div>
+
+        <h2>Where each kind of data lives</h2>
+        <div class="scroll">
+            <table>
+                <tr>
+                    <th>Data</th>
+                    <th>Supabase</th>
+                    <th>Cognee</th>
+                </tr>
+                <tr>
+                    <td>Original PDFs, images</td>
+                    <td>Storage</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>Chunk text and page</td>
+                    <td><code>chunks</code></td>
+                    <td>Yes, embedded (rebuildable)</td>
+                </tr>
+                <tr>
+                    <td>Embedding numbers</td>
+                    <td>No</td>
+                    <td>Yes, handled inside</td>
+                </tr>
+                <tr>
+                    <td>Facts, amounts, readiness, status</td>
+                    <td>Yes</td>
+                    <td>Never</td>
+                </tr>
+                <tr>
+                    <td>Chat and voice transcripts</td>
+                    <td><code>messages</code></td>
+                    <td>No, not evidence</td>
+                </tr>
+            </table>
+        </div>
+        <p>Cognee datasets: <code>financial_knowledge</code> and <code>policy_POL_889923</code> (pre-loaded), plus one
+            per case, named in <code>cases.cognee_dataset</code>. If Cognee data is lost, re-send every chunk from
+            <code>chunks</code>.</p>
+
+        <h2>How rows end their lives</h2>
+        <div class="r">
+            <div><b>Cascade with the case:</b> documents, chunks, case_facts, evidence_items, case_events, actions,
+                messages.</div>
+            <div><b>Append-only by habit:</b> case_events and messages are inserted, never edited.</div>
+            <div><b>Set null:</b> if a document or chunk is deleted, facts and evidence keep their quote and page text.
+            </div>
+            <div><b>Never deleted:</b> document_requirements (seeded once).</div>
+        </div>
+    </main>
+    <script>
+        const C = s => s.trim().split("\n").map(l => l.split("|"));
+        const T = [
+            {
+                n: "auth.users", g: 1, d: "Supabase-managed login table. Skip login for the demo and leave cases.user_id empty.", l: "Managed by Supabase", c: C(`id|uuid|Primary key.
+email|text|Login email.`), x: 20, y: 20
+            },
+            {
+                n: "cases", g: 1, d: "One row per user problem (for example a hospital claim). The root every other table hangs from.", l: "Soft close via status", c: C(`id|uuid pk|UUID default gen_random_uuid().
+case_code|text unique|Readable code like MED-82031.
+user_id|uuid fk null|To auth.users. SET NULL.
+case_type|text|medical_claim for now. Drives readiness rules.
+status|text check|intake, docs_pending, awaiting_hospital_verification, submitted, closed.
+patient_relation|text null|For example mother.
+hospital_name|text null|From intake or bill.
+language_pref|text|english, hinglish, hindi, marathi.
+estimated_bill|numeric null|From the bill fact. Rules write it.
+estimated_coverage|numeric null|Calculated by rules, never by the AI.
+estimated_gap|numeric null|bill minus coverage, never below 0.
+readiness_score|int null|0 to 100, check constraint.
+next_action|text null|Single suggested step shown on dashboard.
+cognee_dataset|text|For example case_MED_82031.
+created_at, updated_at|timestamptz|updated_at set by trigger.`), x: 20, y: 150
+            },
+            {
+                n: "documents", g: 2, d: "One row per uploaded file. A case has many.", l: "Cascade with case", c: C(`id|uuid pk|Document id.
+case_id|uuid fk|To cases. CASCADE.
+document_type|text|health_policy, hospital_bill, admission_note, discharge_summary, claim_form.
+file_name|text|Original name.
+storage_path|text|Path in Supabase Storage.
+page_count|int null|Filled after extraction.
+processing_status|text check|uploaded, processing, done, failed. Frontend polls this.
+error_message|text null|Why it failed.
+uploaded_at|timestamptz|Default now().`), x: 260, y: 150
+            },
+            {
+                n: "chunks", g: 2, d: "Plain text pieces of each document, split by clause, with page number. This exact text is what Cognee embeds.", l: "Cascade with document", c: C(`id|uuid pk|Chunk id.
+document_id|uuid fk|To documents. CASCADE.
+case_id|uuid fk|To cases. Repeated on purpose for fast filtering.
+chunk_index|int|Order inside the document.
+page_number|int null|Needed for "Show source".
+clause_label|text null|For example Schedule of Benefits.
+text|text|The chunk. Used to verify AI quotes.
+synced_to_cognee|boolean|False until Cognee has it. Lets you re-send after a wipe.`), x: 500, y: 70
+            },
+            {
+                n: "case_facts", g: 2, d: "One row per extracted value. All maths and readiness checks read from here.", l: "Cascade with case", c: C(`id|uuid pk|Fact id.
+case_id|uuid fk|To cases. CASCADE.
+document_id|uuid fk null|To documents. SET NULL.
+fact_key|text|sum_insured, room_rent_limit_per_day, discharge_signed and so on.
+value_json|jsonb|500000, true, or "POL-889923".
+value_type|text|money, text, bool, date, number.
+verification_status|text check|extracted, verified, needs_review, conflict.
+source_page|int null|Page where found.
+source_quote|text null|Exact words from the document.
+confidence|numeric(3,2) null|0.00 to 1.00.
+extracted_at|timestamptz|Default now().`), x: 500, y: 230
+            },
+            {
+                n: "evidence_items", g: 2, d: "Proof shown in the evidence drawer: a claim, its quote, page and the chunk behind it.", l: "Cascade with case", c: C(`id|uuid pk|Evidence id.
+case_id|uuid fk|To cases. CASCADE.
+fact_id|uuid fk null|To case_facts. CASCADE.
+chunk_id|uuid fk null|To chunks. SET NULL.
+claim_text|text|For example Room rent is covered up to Rs 5,000/day.
+document_name|text null|Display name.
+page_number|int null|Page of the quote.
+quote|text|Verified to exist inside the chunk text.
+confidence|numeric(3,2) null|From retrieval or extraction.
+created_at|timestamptz|Default now().`), x: 740, y: 150
+            },
+            {
+                n: "case_events", g: 3, d: "The timeline. Every important thing that happens to a case.", l: "Append-only", c: C(`id|uuid pk|Event id.
+case_id|uuid fk|To cases. CASCADE.
+event_type|text|case_created, document_uploaded, readiness_updated, reminder_sent, claim_status_changed.
+actor|text|user, system, n8n, insurer.
+payload_json|jsonb null|Extra details.
+occurred_at|timestamptz|Default now(). Indexed with case_id.`), x: 20, y: 310
+            },
+            {
+                n: "actions", g: 3, d: "Things the app suggests or does, such as upload a document, set a reminder, submit a claim.", l: "Status lifecycle", c: C(`id|uuid pk|Action id.
+case_id|uuid fk|To cases. CASCADE.
+action_type|text|upload_document, set_reminder, submit_claim, escalate.
+status|text check|suggested, confirmed, done, cancelled.
+requires_user_confirmation|boolean|True means nothing runs until the user taps confirm.
+reason|text null|Why it was suggested.
+payload_json|jsonb null|Details for n8n or the backend.
+created_at|timestamptz|Default now().`), x: 200, y: 310
+            },
+            {
+                n: "messages", g: 3, d: "Chat and voice history. User statements here are never treated as verified evidence.", l: "Append-only", c: C(`id|uuid pk|Message id.
+case_id|uuid fk|To cases. CASCADE.
+role|text check|user or assistant.
+content|text|Message text or voice transcript.
+language|text null|Language used.
+abstained|boolean|True when the app said it could not verify.
+evidence_json|jsonb null|Evidence list shown with that answer.
+created_at|timestamptz|Default now().`), x: 380, y: 310
+            },
+            {
+                n: "document_requirements", g: 4, d: "Lookup table that says which documents a case type needs and how many points each is worth.", l: "Seeded, never deleted", c: C(`id|serial pk|Row id.
+case_type|text|medical_claim.
+document_type|text|Matches documents.document_type. No FK on purpose.
+label|text|Shown to the user, for example Signed discharge summary.
+weight|int|Points when the document is present and passes its check.
+partial_credit|int|Points when uploaded but check fails (unsigned). Default 0.`), x: 260, y: 20
+            }
+        ];
+        const E = [["cases", "auth.users", 1], ["documents", "cases"], ["chunks", "documents"], ["case_facts", "documents", 1], ["case_facts", "cases"], ["evidence_items", "case_facts"], ["evidence_items", "chunks", 1], ["case_events", "cases"], ["actions", "cases"], ["messages", "cases"]];
+        const col = ["", "var(--g1)", "var(--g2)", "var(--g3)", "var(--g4)"], W = 140, H = 44, by = {}; T.forEach(t => by[t.n] = t);
+        const svg = document.getElementById("map"), NS = "http://www.w3.org/2000/svg";
+        const mk = (tag, at, p) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (p || svg).appendChild(e); return e };
+        const ctr = t => [t.x + W / 2, t.y + H / 2];
+        E.forEach(([a, b, d]) => { const p = ctr(by[a]), q = ctr(by[b]); const l = mk("line", { x1: p[0], y1: p[1], x2: q[0], y2: q[1], class: "e", "marker-end": "url(#ah)" }); if (d) l.setAttribute("stroke-dasharray", "5 4") });
+        T.forEach(t => {
+            const g = mk("g", { style: "cursor:pointer" }); g.addEventListener("click", () => { const el = document.getElementById("t-" + t.n); el.open = true; el.scrollIntoView({ behavior: "smooth" }) });
+            mk("rect", { x: t.x, y: t.y, width: W, height: H, rx: 8, fill: col[t.g].replace("var(", "var(") }, g).style.fill = col[t.g];
+            const tx = mk("text", { x: t.x + W / 2, y: t.y + H / 2 + 4, "text-anchor": "middle" }, g); tx.textContent = t.n
+        });
+        const tot = T.reduce((s, t) => s + t.c.length, 0);
+        document.getElementById("stats").innerHTML = [T.length + " tables in 4 groups", tot + " columns", E.length + " foreign-key links", "1 database (Supabase Postgres)", "1 search copy (Cognee)"].map(s => "<span>" + s + "</span>").join("");
+        const root = document.getElementById("tables"), gn = ["", "Case core", "Documents and knowledge", "Activity", "Rules lookup"];
+        function render(f) {
+            root.innerHTML = ""; T.forEach(t => {
+                const hit = !f || (t.n + t.d + t.c.map(c => c.join(" ")).join(" ")).toLowerCase().includes(f); if (!hit) return;
+                const d = document.createElement("details"); d.id = "t-" + t.n; if (f) d.open = true;
+                d.innerHTML = "<summary>" + t.n + " <span class='tag'>" + gn[t.g] + "</span><span class='tag'>" + t.l + "</span><small>" + t.c.length + " columns</small></summary><div class='body'><p>" + t.d + "</p><table><tr><th>Column</th><th>Type</th><th>Meaning</th></tr>" + t.c.map(c => "<tr><td>" + c[0] + "</td><td>" + c[1] + "</td><td>" + c[2] + "</td></tr>").join("") + "</table></div>"; root.appendChild(d)
+            })
+        }
+        render(""); document.getElementById("q").addEventListener("input", e => render(e.target.value.toLowerCase().trim()));
+    </script>
+</body>
+
+</html>
