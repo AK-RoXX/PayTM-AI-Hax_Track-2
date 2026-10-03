@@ -22,9 +22,11 @@ from app.schemas.case import (
     EvidenceResponse,
     ReadinessResponse,
 )
+from app.schemas.decision import DecisionFlowResponse, EscalationRequest
 from app.schemas.policy import BillLineItemsReviewRequest, PolicyAssessmentRequest
 from app.services import case_state
 from app.services.case_state import load_case_state
+from app.services.decision_service import build_decision_flow
 from app.services.document_pipeline import (
     AuthenticationError,
     CaseAccessError,
@@ -539,3 +541,39 @@ def _render_value(fact: dict) -> str:
     if fact.get("value_type") == "money":
         return f"INR {float(value):,.0f}"
     return str(value)
+
+
+@router.get("/{case_id}/decision", response_model=DecisionFlowResponse)
+async def get_case_decision_flow(
+    case_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Retrieve full multi-stage decision-making pipeline with grounded citations and next steps."""
+    state = await _load_state(case_id, authorization)
+    return await build_decision_flow(state)
+
+
+@router.post("/{case_id}/escalate")
+async def escalate_case_to_human(
+    case_id: str,
+    payload: EscalationRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Flag the claim for senior claims specialist / TPA human escalation."""
+    state = await _load_state(case_id, authorization)
+    user_id = state["user_id"]
+
+    case_state.record_case_event(
+        case_id,
+        "human_escalation_requested",
+        "Escalated for Human Review",
+        f"Reason: {payload.reason}" + (f" | Note: {payload.note}" if payload.note else ""),
+        actor="user",
+    )
+
+    return {
+        "status": "escalated",
+        "case_id": case_id,
+        "message": "Your claim dossier has been escalated to a senior claims supervisor for priority review.",
+    }
+

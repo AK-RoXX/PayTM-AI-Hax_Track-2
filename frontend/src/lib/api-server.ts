@@ -58,6 +58,12 @@ export async function createCase(draft: CaseDraft): Promise<CaseData> {
   return createCaseRequest(draft, await requireSessionToken());
 }
 
+export async function getDecisionFlow(id: string): Promise<import('./types').DecisionFlowResponse> {
+  const { getDecisionFlow: getDecisionFlowRequest } = await import('./api');
+  return getDecisionFlowRequest(id, await requireSessionToken());
+}
+
+
 export async function setReminder(id: string, delayMinutes = 1) {
   return setReminderRequest(id, delayMinutes, await requireSessionToken());
 }

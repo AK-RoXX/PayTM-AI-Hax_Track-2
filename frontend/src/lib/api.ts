@@ -229,3 +229,21 @@ export type ChatMessage = {
 
 export const listMessages = (id: string, token?: string) =>
   request<{ items: ChatMessage[] }>(`/cases/${id}/messages`, { token });
+
+export const getDecisionFlow = (id: string, token?: string) =>
+  request<import('./types').DecisionFlowResponse>(`/cases/${encodeURIComponent(id)}/decision`, { token });
+
+export const escalateCase = (
+  id: string,
+  payload: { reason?: string; note?: string },
+  token?: string,
+) =>
+  request<{ status: string; case_id: string; message: string }>(
+    `/cases/${encodeURIComponent(id)}/escalate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      token,
+    },
+  );
+

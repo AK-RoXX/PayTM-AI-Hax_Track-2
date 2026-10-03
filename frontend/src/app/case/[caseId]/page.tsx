@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
-import { getCase } from "@/lib/api-server";
+import { getCase, getDecisionFlow } from "@/lib/api-server";
 import { createClient } from "@/lib/supabase/server";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppNavbar } from "@/components/layout/AppNavbar";
 import { EcosystemFooter } from "@/components/common/EcosystemFooter";
 import { CaseHeader } from "@/components/case/CaseHeader";
+import { DecisionFlowCard } from "@/components/case/DecisionFlowCard";
 import { ClaimAssistant } from "@/components/case/ClaimAssistant";
 import { ClaimReadinessCard } from "@/components/case/ClaimReadinessCard";
 import { CaseTimeline } from "@/components/case/CaseTimeline";
@@ -35,8 +36,15 @@ export default async function CasePage({
     "Rahul Sharma";
 
   let data;
+  let decisionFlow;
   try {
-    data = await getCase(caseId);
+    [data, decisionFlow] = await Promise.all([
+      getCase(caseId),
+      getDecisionFlow(caseId).catch((err) => {
+        console.warn("Decision flow fetch fallback:", err);
+        return null;
+      }),
+    ]);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) redirect("/dashboard");
     throw error;
@@ -77,13 +85,20 @@ export default async function CasePage({
           {/* Case Header Banner with Edit Support */}
           <CaseHeader data={data} />
 
+          {/* Decision-Making & Next Steps Pipeline Flow */}
+          {decisionFlow && (
+            <div style={{ marginTop: 24 }}>
+              <DecisionFlowCard initialData={decisionFlow} caseId={caseId} />
+            </div>
+          )}
+
           {/* Responsive 2-Column Split */}
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 540px), 1fr))",
               gap: 24,
-              marginTop: 24,
+              marginTop: decisionFlow ? 0 : 24,
             }}
           >
             {/* Left Column: Interactive Chat & Actions */}

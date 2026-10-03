@@ -242,10 +242,108 @@ export type Readiness = {
   documents_failed: number;
 };
 
-
 export type CaseUpdateRequest = {
   estimated_bill?: number | null;
   hospital_name?: string | null;
   patient_relation?: string | null;
   status?: string | null;
+};
+
+export type PolicyTermCitation = {
+  term_key: string;
+  label: string;
+  value_rendered: string;
+  numeric_value?: number | null;
+  document_name: string;
+  page_number?: number | null;
+  clause_quote: string;
+  confidence: number;
+};
+
+export type FinancialSummaryBreakdown = {
+  gross_bill: number;
+  admissible_charges: number;
+  room_icu_charges: number;
+  pharmacy_diagnostics: number;
+  non_medical_deductions: number;
+  proportionate_deductions: number;
+  total_deductions: number;
+  copay_percentage: number;
+  copay_amount: number;
+  estimated_net_payout: number;
+  estimated_out_of_pocket: number;
+  calculation_basis: string;
+};
+
+export type ClaimVerificationItem = {
+  key: string;
+  label: string;
+  status: "verified" | "missing" | "needs_review" | "conflict";
+  reason: string;
+  document_name?: string | null;
+};
+
+export type ClaimVerificationStatus = {
+  readiness_score: number;
+  completion_state: "complete" | "incomplete" | "blocked";
+  verified_count: number;
+  total_requirements: number;
+  items: ClaimVerificationItem[];
+  has_conflicts: boolean;
+};
+
+export type DecisionProofCitation = {
+  title: string;
+  document_name: string;
+  page_number?: number | null;
+  quote: string;
+  confidence: number;
+  category: "policy" | "bill" | "medical" | "identity";
+};
+
+export type DecisionOutcome = {
+  branch: "proceed" | "abstain" | "escalate";
+  status_label: string;
+  badge_variant: "green" | "amber" | "red" | "blue";
+  headline: string;
+  detailed_rationale: string;
+  proofs: DecisionProofCitation[];
+  abstain_or_rejection_reasons: string[];
+  estimated_approval_amount?: number | null;
+};
+
+export type HumanEscalationDossier = {
+  is_recommended: boolean;
+  reason: string;
+  dossier_summary: string;
+  discrepancies: string[];
+  source_facts: Record<string, unknown>[];
+  cognee_context_snippets: string[];
+};
+
+export type UserNextStep = {
+  step_id: string;
+  priority: "critical" | "high" | "medium" | "optional";
+  title: string;
+  description: string;
+  action_type:
+    | "upload_document"
+    | "review_bill_lines"
+    | "confirm_policy_terms"
+    | "submit_claim"
+    | "request_human_escalation"
+    | "download_dossier";
+  target_route: string;
+  action_label: string;
+};
+
+export type DecisionFlowResponse = {
+  case_id: string;
+  case_code: string;
+  policy_claims: PolicyTermCitation[];
+  financial_summary: FinancialSummaryBreakdown;
+  claim_verification: ClaimVerificationStatus;
+  decision: DecisionOutcome;
+  escalation: HumanEscalationDossier;
+  next_steps: UserNextStep[];
 };
