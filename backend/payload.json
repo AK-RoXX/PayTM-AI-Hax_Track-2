@@ -1,0 +1,5 @@
+{
+  "query": "what is the room rent limit?",
+  "search_type": "CHUNKS",
+  "datasets": ["smoke_test"]
+}
