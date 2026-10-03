@@ -298,7 +298,7 @@ async def handle_policy(case_id, msg, state):
     return HandlerResult(intent=Intent.policy_question, text=r.answer, evidence=evidence)
 
 async def handle_status(case_id, msg, state):
-    r = investigate_claim()
+    r = investigate_claim(case_id)
     status_val = r.get("claim_status", "unknown")
     return HandlerResult(intent=Intent.status_question, text=f"Your claim is {status_val}.")
 
