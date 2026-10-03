@@ -69,8 +69,11 @@ SUPABASE_SERVICE_ROLE_KEY=
 SARVAM_API_KEY=
 GEMINI_API_KEY=
 OCR_PROVIDER_ORDER=sarvam,gemini
+GEMINI_STT_MODEL=gemini-3.5-transcribe
 ```
 
 Apply the Supabase migrations before uploading. The service role key must remain in the backend environment and must never be exposed to the frontend. The first indexed document downloads the configured multilingual FastEmbed model. Searchable PDFs and DOCX files are extracted locally; scanned PDFs and images require at least one configured OCR provider.
 
 OCR providers are tried in `OCR_PROVIDER_ORDER`; currently supported values are `sarvam` and `gemini`. Configure either or both API keys. Gemini Interactions are sent with storage disabled. Provider free-tier quotas are account- and region-dependent and are not guaranteed. OCR provider adapters normalize results to page text; embeddings always come from the same local model so the pgvector dimensions remain consistent.
+
+Claim intake voice input uses the same `SARVAM_API_KEY` and `GEMINI_API_KEY`. The backend selects a provider automatically using `OCR_PROVIDER_ORDER`; users select the spoken language or leave automatic detection on. Recordings are limited to 28 seconds and 10 MB and sent to the authenticated `/api/v1/speech/transcribe` endpoint. The app does not persist audio; Gemini requires a temporary Files API upload, which the backend deletes after transcription. The transcript appears in the editable claim description and is submitted with the claim only when the user continues. Gemini transcription interactions disable storage; configure `GEMINI_STT_MODEL` to override the default.

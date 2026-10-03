@@ -14,7 +14,7 @@ router = APIRouter(prefix="/speech", tags=["speech"])
 @router.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
-    provider: str = Form(default="auto"),
+    language_code: str = Form(default="auto"),
     authorization: str | None = Header(default=None),
 ):
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -34,7 +34,7 @@ async def transcribe(
             transcribe_audio,
             content,
             audio.content_type or "",
-            provider.strip().lower(),
+            language_code.strip(),
         )
     except ValueError as error:
         raise HTTPException(400, str(error)) from error

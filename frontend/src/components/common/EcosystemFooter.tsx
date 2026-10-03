@@ -1,14 +1,9 @@
 import React from "react";
-import { Sparkles, FileText, Lock, Layers } from "lucide-react";
+import { FileText, Lock, Layers } from "lucide-react";
 import { PaytmLogo } from "./PaytmLogo";
 
 export function EcosystemFooter() {
   const pillars = [
-    {
-      icon: Sparkles,
-      title: "Powered by AI",
-      desc: "(Gemini + RAG)",
-    },
     {
       icon: FileText,
       title: "Uses your documents",
@@ -18,12 +13,7 @@ export function EcosystemFooter() {
       icon: Lock,
       title: "Secure & private",
       desc: "(Your data, your control)",
-    },
-    {
-      icon: Layers,
-      title: "Connected to Paytm ecosystem",
-      desc: "(Insurance | Lending | Payments | Credit)",
-    },
+    }
   ];
 
   return (
@@ -50,7 +40,7 @@ export function EcosystemFooter() {
           <PaytmLogo size="md" subtitleText="AI for your financial journeys" />
         </div>
 
-        {/* 4 Pillars */}
+        {/* 3 Pillars */}
         <div
           style={{
             display: "flex",

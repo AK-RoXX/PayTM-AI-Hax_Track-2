@@ -85,6 +85,17 @@ export const createCase = (draft: CaseDraft | string, token?: string) =>
     token,
   });
 
+export const transcribeAudio = async (audio: Blob, languageCode: string, token: string) => {
+  const form = new FormData();
+  form.append('audio', audio, `claim-intake.${audio.type.includes('mp4') ? 'm4a' : audio.type.includes('ogg') ? 'ogg' : audio.type.includes('wav') ? 'wav' : 'webm'}`);
+  form.append('language_code', languageCode);
+  return request<{ transcript: string; provider: string }>('/speech/transcribe', {
+    method: 'POST',
+    body: form,
+    token,
+  });
+};
+
 // ─── Evidence ─────────────────────────────────────────────────
 
 export const getEvidence = (id: string, token?: string) =>
