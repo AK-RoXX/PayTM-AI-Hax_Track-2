@@ -18,6 +18,7 @@ from app.agents.intake_agent import run_intake
 from app.schemas.case import (
     CaseCreateRequest,
     CaseResponse,
+    CaseUpdateRequest,
     EvidenceResponse,
     ReadinessResponse,
 )
@@ -234,6 +235,140 @@ def _fetch_case_for_user(case_id: str, user_id: str) -> dict:
 async def get_case(case_id: str, authorization: str | None = Header(default=None)):
     state = await _load_state(case_id, authorization)
     return state["view"]
+
+
+@router.patch("/{case_id}", response_model=CaseResponse)
+async def update_case(
+    case_id: str,
+    payload: CaseUpdateRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Update claim details such as total bill, hospital name, or patient relation."""
+    user_id = await _user_id(authorization)
+    await run_in_threadpool(_fetch_case_for_user, case_id, user_id)
+
+    updates = payload.model_dump(exclude_unset=True)
+    if updates:
+        await run_in_threadpool(_update_case_data, case_id, user_id, updates)
+
+    state = await _load_state(case_id, authorization)
+    return state["view"]
+
+
+def _update_case_data(case_id: str, user_id: str, updates: dict) -> None:
+    from datetime import datetime, timezone
+
+    case_patch: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if "estimated_bill" in updates:
+        case_patch["estimated_bill"] = updates["estimated_bill"]
+    if "hospital_name" in updates:
+        case_patch["hospital_name"] = (updates["hospital_name"] or "").strip() or None
+    if "patient_relation" in updates:
+        case_patch["patient_relation"] = updates["patient_relation"]
+    if "status" in updates:
+        case_patch["status"] = updates["status"]
+
+    _supabase_request(
+        "PATCH",
+        "/rest/v1/cases",
+        params={"id": f"eq.{case_id}", "user_id": f"eq.{user_id}"},
+        headers={"Prefer": "return=minimal"},
+        json=case_patch,
+    )
+
+    if "estimated_bill" in updates:
+        bill_val = updates["estimated_bill"]
+        try:
+            _supabase_request(
+                "DELETE",
+                "/rest/v1/case_facts",
+                params={"case_id": f"eq.{case_id}", "fact_key": "eq.estimated_total_amount", "document_id": "is.null"},
+                headers={"Prefer": "return=minimal"},
+            )
+            if bill_val is not None and float(bill_val) > 0:
+                _supabase_request(
+                    "POST",
+                    "/rest/v1/case_facts",
+                    headers={"Prefer": "return=minimal"},
+                    json=[{
+                        "case_id": case_id,
+                        "document_id": None,
+                        "fact_key": "estimated_total_amount",
+                        "value_json": float(bill_val),
+                        "value_type": "money",
+                        "verification_status": "verified",
+                        "source_page": None,
+                        "source_quote": f"Updated estimated bill of ₹{float(bill_val):,.0f} provided by user",
+                        "confidence": 0.99,
+                    }],
+                )
+        except Exception as error:
+            logger.warning("Could not update case fact estimated_total_amount for %s: %s", case_id, error)
+
+        case_state.record_case_event(
+            case_id,
+            "bill_updated",
+            "Total bill updated",
+            f"Total estimated bill updated to ₹{float(bill_val or 0):,.0f}",
+            actor="user",
+        )
+
+    if "hospital_name" in updates and updates["hospital_name"]:
+        h_name = updates["hospital_name"].strip()
+        try:
+            _supabase_request(
+                "DELETE",
+                "/rest/v1/case_facts",
+                params={"case_id": f"eq.{case_id}", "fact_key": "eq.hospital_name", "document_id": "is.null"},
+                headers={"Prefer": "return=minimal"},
+            )
+            _supabase_request(
+                "POST",
+                "/rest/v1/case_facts",
+                headers={"Prefer": "return=minimal"},
+                json=[{
+                    "case_id": case_id,
+                    "document_id": None,
+                    "fact_key": "hospital_name",
+                    "value_json": h_name,
+                    "value_type": "text",
+                    "verification_status": "verified",
+                    "source_page": None,
+                    "source_quote": f"Hospital name updated to '{h_name}'",
+                    "confidence": 0.99,
+                }],
+            )
+        except Exception as error:
+            logger.warning("Could not update hospital_name fact for %s: %s", case_id, error)
+
+    if "patient_relation" in updates and updates["patient_relation"]:
+        p_rel = updates["patient_relation"]
+        try:
+            _supabase_request(
+                "DELETE",
+                "/rest/v1/case_facts",
+                params={"case_id": f"eq.{case_id}", "fact_key": "eq.patient_relation", "document_id": "is.null"},
+                headers={"Prefer": "return=minimal"},
+            )
+            _supabase_request(
+                "POST",
+                "/rest/v1/case_facts",
+                headers={"Prefer": "return=minimal"},
+                json=[{
+                    "case_id": case_id,
+                    "document_id": None,
+                    "fact_key": "patient_relation",
+                    "value_json": p_rel,
+                    "value_type": "text",
+                    "verification_status": "verified",
+                    "source_page": None,
+                    "source_quote": f"Patient relation updated to '{p_rel}'",
+                    "confidence": 0.99,
+                }],
+            )
+        except Exception as error:
+            logger.warning("Could not update patient_relation fact for %s: %s", case_id, error)
+
 
 
 @router.get("/{case_id}/readiness", response_model=ReadinessResponse)

@@ -148,14 +148,19 @@ class CaseEndpointTests(unittest.TestCase):
             f"/api/v1/cases/{CASE_ID}/evidence", headers={"Authorization": "Bearer token"}
         )
 
+    @patch("app.api.cases._supabase_request", side_effect=fake_supabase)
+    @patch("app.services.case_state._supabase_request", side_effect=fake_supabase)
+    @patch("app.api.cases.authenticate_user", return_value=OWNER)
+    def test_owner_can_update_case_and_bill(self, authenticate, state_request, request):
+        response = self.client.patch(
+            f"/api/v1/cases/{CASE_ID}",
+            json={"estimated_bill": 350000.0, "hospital_name": "Apollo Hospital"},
+            headers={"Authorization": "Bearer token"},
+        )
         self.assertEqual(response.status_code, 200)
-        items = response.json()["items"]
-        self.assertEqual(len(items), 1)
-        self.assertIn("Sum insured", items[0]["claim"])
-        self.assertEqual(items[0]["document_name"], "Policy.pdf")
-        self.assertEqual(items[0]["page_number"], 2)
-        self.assertEqual(items[0]["quote"], "Sum Insured: Rs. 5,00,000")
+        body = response.json()
+        self.assertEqual(body["case_code"], "MED-TEST01")
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main()

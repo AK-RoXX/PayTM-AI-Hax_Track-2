@@ -6,7 +6,7 @@
  * rejected. There are no hardcoded fallback values — errors are surfaced as
  * thrown exceptions so the UI can show proper error states.
  */
-import { CaseData, CaseDocument, Evidence, ExtractedFact, Readiness } from './types';
+import { CaseData, CaseDocument, CaseUpdateRequest, Evidence, ExtractedFact, Readiness } from './types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
@@ -82,6 +82,13 @@ export const createCase = (draft: CaseDraft | string, token?: string) =>
   request<CaseData>('/cases', {
     method: 'POST',
     body: JSON.stringify(typeof draft === 'string' ? { message: draft } : draft),
+    token,
+  });
+
+export const updateCase = (id: string, updates: CaseUpdateRequest, token?: string) =>
+  request<CaseData>(`/cases/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
     token,
   });
 
@@ -162,4 +169,3 @@ export type ChatMessage = {
 
 export const listMessages = (id: string, token?: string) =>
   request<{ items: ChatMessage[] }>(`/cases/${id}/messages`, { token });
-

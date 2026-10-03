@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, FileText, ArrowRight, ShieldCheck, AlertCircle, Clock, PieChart } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronUp, AlertCircle, PieChart, Edit3, X, Check, Plus } from "lucide-react";
 import type { CaseData } from "@/lib/types";
+import { updateCase } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
 
 const money = (x: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -12,7 +15,16 @@ const money = (x: number) =>
   }).format(x);
 
 export function FinancialMap({ data }: { data: CaseData }) {
+  const router = useRouter();
   const [accordionOpen, setAccordionOpen] = useState(true);
+  const [isEditingBill, setIsEditingBill] = useState(false);
+  const [billAmount, setBillAmount] = useState(
+    data.financial_map?.hospital_estimate ? String(data.financial_map.hospital_estimate) : ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
   const f = data.financial_map;
 
   // Use only real data from case state — no hardcoded fallbacks
@@ -21,34 +33,112 @@ export function FinancialMap({ data }: { data: CaseData }) {
   const outOfPocket = f.estimated_gap || 0;
   const underAssessment = Math.max(0, totalBill - approved - outOfPocket);
 
-  // If no financial data exists, show empty state
-  if (totalBill === 0) {
+  const handleUpdateBill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const parsed = billAmount.trim() ? Number(billAmount) : null;
+      if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+        setError("Please enter a valid positive number.");
+        setSaving(false);
+        return;
+      }
+
+      await updateCase(
+        data.id,
+        { estimated_bill: parsed },
+        session?.access_token
+      );
+
+      setSuccess(true);
+      setTimeout(() => {
+        setIsEditingBill(false);
+        setSuccess(false);
+        router.refresh();
+      }, 600);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update total bill.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // If no financial data exists, show empty state with add button
+  if (totalBill === 0 && !isEditingBill) {
     return (
       <section className="card" id="money-map" style={{ padding: "26px" }}>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span className="label" style={{ color: "#0066f5" }}>Paytm Money Map</span>
-          </div>
-          <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
-            Money Map
-          </h2>
-        </div>
         <div
           style={{
-            padding: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span className="label" style={{ color: "#0066f5" }}>Paytm Money Map</span>
+            </div>
+            <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
+              Money Map
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            id="add-bill-btn"
+            onClick={() => {
+              setBillAmount("");
+              setError("");
+              setIsEditingBill(true);
+            }}
+            className="btn btn-primary btn-sm"
+            style={{ borderRadius: 12, gap: 6 }}
+          >
+            <Plus size={14} />
+            Set Total Bill
+          </button>
+        </div>
+
+        <div
+          style={{
+            padding: "28px 24px",
             textAlign: "center",
             background: "#f8fafc",
             borderRadius: 14,
             border: "1px dashed #cbd5e1",
           }}
         >
-          <PieChart size={28} style={{ color: "#94a3b8", margin: "0 auto 8px" }} />
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
-            No financial data yet
+          <PieChart size={32} style={{ color: "#94a3b8", margin: "0 auto 10px" }} />
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#1e293b" }}>
+            No financial bill entered yet
           </p>
-          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
-            Upload your hospital bill and insurance policy to see your coverage breakdown.
+          <p className="muted" style={{ margin: "6px 0 16px", fontSize: 13.5 }}>
+            Set your estimated hospital bill or upload an estimate to generate your money map.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              setBillAmount("");
+              setError("");
+              setIsEditingBill(true);
+            }}
+            className="btn btn-outline btn-sm"
+            style={{ borderRadius: 10, gap: 6 }}
+          >
+            <Plus size={14} />
+            Enter Estimated Bill
+          </button>
         </div>
       </section>
     );
@@ -59,7 +149,7 @@ export function FinancialMap({ data }: { data: CaseData }) {
   const pctOutOfPocket = totalBill > 0 ? Math.round((outOfPocket / totalBill) * 100) : 0;
   const pctUnderAssessment = totalBill > 0 ? Math.round((underAssessment / totalBill) * 100) : 0;
 
-  // SVG Donut calculations (radius 60, circumference ~377)
+  // SVG Donut calculations (radius 54, circumference ~339.29)
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const strokeApproved = (pctApproved / 100) * circumference;
@@ -83,17 +173,51 @@ export function FinancialMap({ data }: { data: CaseData }) {
   return (
     <section className="card" id="money-map" style={{ padding: "26px" }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <span className="label" style={{ color: "#0066f5" }}>Paytm Money Map</span>
-          <span className="pill pill-green" style={{ fontSize: 11 }}>AI Analyzed</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: 20,
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span className="label" style={{ color: "#0066f5" }}>Paytm Money Map</span>
+            <span className="pill pill-green" style={{ fontSize: 11 }}>AI Analyzed</span>
+          </div>
+          <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
+            Money Map
+          </h2>
+          <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>
+            Your bill, coverage and financial position at a glance
+          </p>
         </div>
-        <h2 className="heading" style={{ fontSize: 22, margin: "2px 0 4px", color: "var(--paytm-navy)" }}>
-          Money Map
-        </h2>
-        <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>
-          Your bill, coverage and financial position at a glance
-        </p>
+
+        <button
+          type="button"
+          id="edit-bill-amount-btn"
+          onClick={() => {
+            setBillAmount(totalBill ? String(totalBill) : "");
+            setError("");
+            setIsEditingBill(true);
+          }}
+          className="btn btn-outline btn-sm"
+          style={{
+            borderRadius: 10,
+            gap: 6,
+            fontSize: 12.5,
+            borderColor: "#0066f5",
+            color: "#0066f5",
+            background: "#eff6ff",
+            fontWeight: 600,
+          }}
+        >
+          <Edit3 size={13} />
+          Edit Total Bill
+        </button>
       </div>
 
       {/* Main Breakdown Section (Donut + Legend) */}
@@ -189,11 +313,30 @@ export function FinancialMap({ data }: { data: CaseData }) {
               >
                 {money(totalBill)}
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBillAmount(totalBill ? String(totalBill) : "");
+                  setIsEditingBill(true);
+                }}
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  color: "#0066f5",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  marginTop: 3,
+                  textDecoration: "underline",
+                }}
+              >
+                Edit
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Legend List (Matching Application UI.png) */}
+        {/* Legend List */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Approved Card */}
           <div
@@ -387,7 +530,7 @@ export function FinancialMap({ data }: { data: CaseData }) {
                       <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>
                         {item.title}
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>
                         {item.source}
                       </div>
                       <div
@@ -426,19 +569,9 @@ export function FinancialMap({ data }: { data: CaseData }) {
               <span style={{ fontSize: 12, color: "#64748b" }}>
                 Verified via Policy & Hospital Estimate
               </span>
-              <a
-                href="#evidence-drawer"
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#0066f5",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                View full evidence <ArrowRight size={14} />
-              </a>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#0066f5" }}>
+                ✓ Paytm Sahayak Verified
+              </span>
             </div>
           </div>
         )}
@@ -449,6 +582,197 @@ export function FinancialMap({ data }: { data: CaseData }) {
         {f.disclaimer ||
           "Estimates generated by Paytm Sahayak AI from your submitted hospital bills and policy clauses. Final settlement subject to insurer terms."}
       </p>
+
+      {/* Edit Bill Modal */}
+      {isEditingBill && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditingBill(false);
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: 460,
+              width: "100%",
+              padding: "26px 24px",
+              boxShadow: "0 20px 45px rgba(0,0,0,0.2)",
+              borderRadius: 20,
+              background: "#ffffff",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <span className="label" style={{ color: "#0066f5" }}>
+                  Paytm Money Map
+                </span>
+                <h3
+                  className="heading"
+                  style={{
+                    fontSize: 20,
+                    margin: "2px 0 0",
+                    color: "var(--paytm-navy)",
+                  }}
+                >
+                  Update Total Hospital Bill
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingBill(false)}
+                style={{
+                  border: 0,
+                  background: "#f1f5f9",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#64748b",
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateBill} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label
+                  htmlFor="quick-bill-amount"
+                  style={{
+                    display: "block",
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    marginBottom: 6,
+                  }}
+                >
+                  Total Bill Amount (₹)
+                </label>
+                <div style={{ position: "relative" }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: "#64748b",
+                    }}
+                  >
+                    ₹
+                  </span>
+                  <input
+                    id="quick-bill-amount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={billAmount}
+                    onChange={(e) => setBillAmount(e.target.value)}
+                    placeholder="e.g. 350000"
+                    style={{
+                      width: "100%",
+                      padding: "11px 14px 11px 32px",
+                      borderRadius: 12,
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: 15,
+                      fontWeight: 600,
+                    }}
+                  />
+                </div>
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
+                  Your out-of-pocket gap and insurance coverage breakdown will be recalculated instantly.
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    background: "#fef2f2",
+                    color: "#b91c1c",
+                    borderRadius: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    background: "#ecfdf5",
+                    color: "#059669",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 600,
+                  }}
+                >
+                  <Check size={16} />
+                  Bill updated successfully!
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: 12,
+                  marginTop: 6,
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setIsEditingBill(false)}
+                  disabled={saving}
+                  style={{ borderRadius: 12 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  id="save-bill-amount-btn"
+                  className="btn btn-primary"
+                  disabled={saving}
+                  style={{ borderRadius: 12, minWidth: 120 }}
+                >
+                  {saving ? "Saving…" : "Save & Recalculate"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

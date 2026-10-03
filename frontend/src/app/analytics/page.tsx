@@ -29,6 +29,9 @@ const money = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const transactionMoney = (value: number, currency: string) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
+
 function StatCard({
   label,
   amount,
@@ -71,7 +74,32 @@ export default async function AnalyticsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  const { data: transactions, error: transactionsError } = await supabase
+    .from("transactions")
+    .select("id, description, merchant, amount, currency, direction, status, transaction_at, payment_method, transaction_categories(name, color)")
+    .eq("user_id", user.id)
+    .order("transaction_at", { ascending: false })
+    .limit(500);
+
   const rows = cases ?? [];
+  const transactionRows = transactions ?? [];
+  const categorizedTotals = new Map<string, { amount: number; color: string }>();
+  for (const transaction of transactionRows) {
+    if (transaction.status !== "posted" || transaction.direction === "transfer" || transaction.currency !== "INR") continue;
+    const category = Array.isArray(transaction.transaction_categories)
+      ? transaction.transaction_categories[0]
+      : transaction.transaction_categories;
+    const categoryName = category?.name || "Uncategorized";
+    const existing = categorizedTotals.get(categoryName) ?? { amount: 0, color: category?.color || "#64748b" };
+    existing.amount += transaction.direction === "credit" ? -Number(transaction.amount) : Number(transaction.amount);
+    categorizedTotals.set(categoryName, existing);
+  }
+  const postedDebits = transactionRows
+    .filter((item) => item.status === "posted" && item.direction === "debit" && item.currency === "INR")
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  const postedCredits = transactionRows
+    .filter((item) => item.status === "posted" && item.direction === "credit" && item.currency === "INR")
+    .reduce((sum, item) => sum + Number(item.amount), 0);
   const totals = rows.reduce(
     (sum, item) => ({
       bills: sum.bills + Number(item.estimated_bill ?? 0),
@@ -169,13 +197,48 @@ export default async function AnalyticsPage() {
                   <CreditCard size={19} color="#64748b" />
                   <h2 className="heading" style={{ fontSize: 18, color: "#0f172a", margin: 0 }}>Transactions</h2>
                 </div>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, borderRadius: 14, background: "#f8fafc", padding: 16 }}>
-                  <ArrowDownLeft size={19} color="#64748b" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ color: "#334155", fontSize: 14, fontWeight: 650, margin: "0 0 4px" }}>No transaction records connected yet</p>
-                    <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.55, margin: 0 }}>This account currently has claim estimates only. Paytm, bank, and UPI transaction history is not connected, so no spending categories or transaction totals are shown.</p>
+                {transactionsError ? (
+                  <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 12, borderRadius: 14, background: "#fffbeb", padding: 16 }}>
+                    <ArrowDownLeft size={19} color="#b45309" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <p style={{ color: "#92400e", fontSize: 13, lineHeight: 1.55, margin: 0 }}>Transaction storage is not ready yet. Apply the latest Supabase migration to enable transaction analytics.</p>
                   </div>
-                </div>
+                ) : transactionRows.length === 0 ? (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, borderRadius: 14, background: "#f8fafc", padding: 16 }}>
+                    <ArrowDownLeft size={19} color="#64748b" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <div>
+                      <p style={{ color: "#334155", fontSize: 14, fontWeight: 650, margin: "0 0 4px" }}>No transaction records yet</p>
+                      <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.55, margin: 0 }}>Transactions can now be stored in Supabase and linked to categories and claims. Once records are added or imported, they will appear here.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 18 }}>
+                      <div style={{ borderRadius: 13, background: "#fff1f2", padding: 14 }}><div style={{ color: "#9f1239", fontSize: 12 }}>Posted spending · INR</div><div className="heading" style={{ color: "#881337", fontSize: 20, marginTop: 5 }}>{money(postedDebits)}</div></div>
+                      <div style={{ borderRadius: 13, background: "#ecfdf5", padding: 14 }}><div style={{ color: "#047857", fontSize: 12 }}>Posted income · INR</div><div className="heading" style={{ color: "#065f46", fontSize: 20, marginTop: 5 }}>{money(postedCredits)}</div></div>
+                      <div style={{ borderRadius: 13, background: "#f8fafc", padding: 14 }}><div style={{ color: "#64748b", fontSize: 12 }}>Records loaded</div><div className="heading" style={{ color: "#0f172a", fontSize: 20, marginTop: 5 }}>{transactionRows.length}</div></div>
+                    </div>
+                    {categorizedTotals.size > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+                      {[...categorizedTotals.entries()].map(([name, item]) => <span key={name} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: "1px solid #e2e8f0", borderRadius: 999, padding: "7px 11px", color: "#334155", fontSize: 12 }}><span style={{ width: 8, height: 8, borderRadius: 99, background: item.color }} />{name}: {money(item.amount)}</span>)}
+                    </div>}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600, textAlign: "left" }}>
+                        <thead><tr style={{ color: "#64748b", fontSize: 12, borderBottom: "1px solid #e2e8f0" }}><th style={{ padding: "11px 8px", fontWeight: 600 }}>Description</th><th style={{ padding: "11px 8px", fontWeight: 600 }}>Category</th><th style={{ padding: "11px 8px", fontWeight: 600 }}>Date</th><th style={{ padding: "11px 8px", fontWeight: 600 }}>Status</th><th style={{ padding: "11px 8px", fontWeight: 600, textAlign: "right" }}>Amount</th></tr></thead>
+                        <tbody>{transactionRows.map((transaction) => {
+                          const category = Array.isArray(transaction.transaction_categories) ? transaction.transaction_categories[0] : transaction.transaction_categories;
+                          const positive = transaction.direction === "credit";
+                          return <tr key={transaction.id} style={{ borderBottom: "1px solid #f1f5f9", fontSize: 13, color: "#334155" }}>
+                            <td style={{ padding: "13px 8px", fontWeight: 600 }}>{transaction.description}<div style={{ color: "#94a3b8", fontWeight: 400, fontSize: 11, marginTop: 3 }}>{transaction.merchant || transaction.payment_method?.replaceAll("_", " ") || "Transaction"}</div></td>
+                            <td style={{ padding: "13px 8px" }}>{category?.name || "Uncategorized"}</td>
+                            <td style={{ padding: "13px 8px", whiteSpace: "nowrap" }}>{new Date(transaction.transaction_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                            <td style={{ padding: "13px 8px", textTransform: "capitalize" }}>{transaction.status}</td>
+                            <td style={{ padding: "13px 8px", textAlign: "right", whiteSpace: "nowrap", color: positive ? "#047857" : "#334155", fontWeight: 650 }}>{positive ? "+" : transaction.direction === "transfer" ? "" : "−"}{transactionMoney(Number(transaction.amount), transaction.currency)}</td>
+                          </tr>;
+                        })}</tbody>
+                      </table>
+                    </div>
+                    {transactionRows.length === 500 && <p className="muted" style={{ margin: "12px 0 0", fontSize: 12 }}>Showing the 500 most recent transaction records.</p>}
+                  </>
+                )}
               </section>
             </>
           )}

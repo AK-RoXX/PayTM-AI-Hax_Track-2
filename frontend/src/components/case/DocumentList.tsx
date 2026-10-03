@@ -27,6 +27,17 @@ function readableDocumentType(type: string) {
   return type.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatFactValue(value: unknown, valueType?: string): string {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === undefined) return "Not found";
+  if (valueType === "money" || (typeof value === "number" && value >= 1000)) {
+    return `₹${Number(value).toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
+  }
+  return String(value);
+}
+
 export function DocumentList({
   documents,
   caseId,
@@ -195,7 +206,9 @@ export function DocumentList({
                         }}
                       >
                         <span style={{ color: "#64748b" }}>{fact.label}</span>
-                        <strong style={{ color: "#0f172a" }}>{String(fact.value_json)}</strong>
+                        <strong style={{ color: "#0f172a" }}>
+                          {formatFactValue(fact.value_json, fact.value_type)}
+                        </strong>
                       </div>
                     ))}
                   </div>

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Upload, MessageSquare, PieChart, FileText, Activity } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
-import { getCase, getEvidence } from "@/lib/api-server";
+import { getCase } from "@/lib/api-server";
 import { createClient } from "@/lib/supabase/server";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppNavbar } from "@/components/layout/AppNavbar";
@@ -13,8 +13,6 @@ import { ClaimAssistant } from "@/components/case/ClaimAssistant";
 import { ClaimReadinessCard } from "@/components/case/ClaimReadinessCard";
 import { CaseTimeline } from "@/components/case/CaseTimeline";
 import { DocumentList } from "@/components/case/DocumentList";
-import { EvidenceDrawer } from "@/components/case/EvidenceDrawer";
-import { ExtractedFacts } from "@/components/case/ExtractedFacts";
 import { FinancialMap } from "@/components/case/FinancialMap";
 import { NextActionCard } from "@/components/case/NextActionCard";
 
@@ -36,9 +34,9 @@ export default async function CasePage({
     user?.email?.split("@")[0] ||
     "Rahul Sharma";
 
-  let data, evidence;
+  let data;
   try {
-    [data, evidence] = await Promise.all([getCase(caseId), getEvidence(caseId)]);
+    data = await getCase(caseId);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) redirect("/dashboard");
     throw error;
@@ -46,7 +44,7 @@ export default async function CasePage({
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
-      {/* Desktop Left Sidebar from Application UI.png */}
+      {/* Desktop Left Sidebar */}
       <AppSidebar currentCaseId={caseId} />
 
       {/* Main Workspace */}
@@ -76,10 +74,10 @@ export default async function CasePage({
             </span>
           </div>
 
-          {/* Case Header Banner */}
+          {/* Case Header Banner with Edit Support */}
           <CaseHeader data={data} />
 
-          {/* Responsive 2-Column Split matching Web Chat Workspace & Money Map Detailed View */}
+          {/* Responsive 2-Column Split */}
           <div
             style={{
               display: "grid",
@@ -105,9 +103,9 @@ export default async function CasePage({
               <DocumentList documents={data.documents} caseId={caseId} />
             </div>
 
-            {/* Right Column: Money Map & Claim Timeline & Evidence */}
+            {/* Right Column: Money Map & Claim Timeline */}
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {/* Money Map with Donut Chart and Accordion breakdown */}
+              {/* Money Map with Donut Chart and Editable Total Bill */}
               <FinancialMap data={data} />
 
               {/* Claim Readiness Score */}
@@ -115,12 +113,6 @@ export default async function CasePage({
 
               {/* Real-time Timeline Status Stepper */}
               <CaseTimeline events={data.timeline} caseId={caseId} />
-
-              {/* Source Evidence Quotes */}
-              <EvidenceDrawer items={evidence.items} />
-
-              {/* Extracted Facts */}
-              <ExtractedFacts facts={data.facts} />
             </div>
           </div>
         </main>

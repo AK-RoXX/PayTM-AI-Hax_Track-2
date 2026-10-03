@@ -98,3 +98,10 @@ class CaseCreateRequest(BaseModel):
     patient_relation: str | None = None
     hospital_name: str | None = None
     estimated_bill: float | None = Field(default=None, ge=0)
+
+class CaseUpdateRequest(BaseModel):
+    estimated_bill: float | None = Field(default=None, ge=0)
+    hospital_name: str | None = None
+    patient_relation: str | None = None
+    status: str | None = None
+
