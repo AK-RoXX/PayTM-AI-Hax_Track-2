@@ -15,3 +15,7 @@ app.include_router(integrations.callback_router, prefix="/api/v1")
 
 @app.get("/health")
 def health(): return {"status":"ok","service":settings.app_name,"demo_mode":settings.demo_mode}
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the API. Access /docs for documentation."}
